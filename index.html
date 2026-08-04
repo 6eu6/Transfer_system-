@@ -633,6 +633,42 @@ footer.foot{
 .wrap[data-mode="client"] .client-banner{ display:flex; }
 .client-banner strong{ color:var(--accent); }
 
+/* ---- daily lock vs live ---- */
+.lockgrid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:640px){ .lockgrid{ grid-template-columns:1fr; } }
+.lockbox{
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  padding:13px 15px;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.lockbox-label{
+  font-family:var(--font-display);
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.lockbox-when{
+  font-family:var(--font-data);
+  font-variant-numeric:tabular-nums;
+  direction:ltr;
+  unicode-bidi:isolate;
+  font-size:19px;
+  font-weight:700;
+  letter-spacing:-.02em;
+}
+.lockbox-src{ font-size:11.5px; color:var(--muted); }
+
+td.drift{ font-family:var(--font-data); font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; font-weight:700; }
+td.drift.up{ color:var(--good); }
+td.drift.dn{ color:var(--crit); }
+td.drift.flat{ color:var(--muted); }
+
 /* ---- quick ladder ---- */
 .ladder td.big{
   font-family:var(--font-data);
@@ -769,6 +805,78 @@ footer.foot{
     </section>
 
   </div>
+
+  <!-- ══════════ DAILY LOCK vs LIVE ══════════ -->
+  <section class="card op-only" id="lock-card">
+    <div class="card-head">
+      <h2>سعر اليوم المنشور ↔ السعر اللحظي</h2>
+      <div class="seg" role="group" aria-label="أساس التسعير">
+        <button id="basis-locked" aria-pressed="false">احسب بسعر اليوم</button>
+        <button id="basis-live"   aria-pressed="true">احسب باللحظي</button>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <div class="lockgrid">
+        <div class="lockbox">
+          <span class="lockbox-label">سعر اليوم المثبَّت</span>
+          <span class="lockbox-when" id="lock-when">لم تثبّت بعد</span>
+          <div class="toolbar" style="margin-top:10px">
+            <button class="btn btn-primary btn-sm" id="btn-lock">تثبيت أسعار الآن</button>
+            <button class="btn btn-sm" id="btn-unlock">إلغاء التثبيت</button>
+          </div>
+        </div>
+        <div class="lockbox">
+          <span class="lockbox-label">السعر اللحظي</span>
+          <span class="lockbox-when" id="live-when">—</span>
+          <span class="lockbox-src" id="live-src"></span>
+        </div>
+      </div>
+
+      <div id="drift-flag"></div>
+
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>الزوج</th>
+              <th>سعر اليوم</th>
+              <th>اللحظي</th>
+              <th>الفارق</th>
+              <th>أثره على ربحك</th>
+            </tr>
+          </thead>
+          <tbody id="drift-body"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ WHATSAPP BROADCAST ══════════ -->
+  <section class="card op-only">
+    <div class="card-head">
+      <h2>رسالة الأسعار للقروبات</h2>
+      <span class="hint">تُبنى من سعر اليوم المثبَّت — لا من اللحظي</span>
+    </div>
+    <div class="card-body">
+      <div class="row-eq">
+        <div class="field">
+          <label for="promo-payout">عملة التسليم في الرسالة</label>
+          <select class="input" id="promo-payout"></select>
+        </div>
+        <div class="field">
+          <label for="promo-contact">سطر التواصل (اختياري)</label>
+          <input class="input" type="text" id="promo-contact" placeholder="مثال: للتواصل 00967xxxxxxxxx">
+        </div>
+      </div>
+      <div class="receipt" id="promo-text">—</div>
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" id="btn-promo-copy">نسخ الرسالة</button>
+        <button class="btn btn-sm" id="btn-promo-wa">فتح واتساب</button>
+      </div>
+    </div>
+  </section>
 
   <!-- ══════════ QUICK LADDER ══════════ -->
   <section class="card">
@@ -965,11 +1073,12 @@ const CCY = {
 };
 
 const SNAPSHOT = {
-  USD:1, EUR:0.868722, GBP:0.74407, SAR:3.75, AED:3.6725, OMR:0.384497,
-  QAR:3.64, KWD:0.309191, JOD:0.709, YER:238.086401, TRY:47.549099,
-  EGP:50.259961, MYR:4.094107, CAD:1.40404, AUD:1.428829, CHF:0.809872,
-  SEK:9.554788, NOK:9.539582, DKK:6.480755, DJF:177.721, JPY:157.167068,
-  CNY:6.765857, INR:95.401315
+  USD:1, EUR:0.867992, GBP:0.74337, SAR:3.755321,
+  AED:3.6733, OMR:0.3851, QAR:3.641001, KWD:0.30953,
+  JOD:0.71, YER:238.390025, TRY:47.545708, EGP:50.18061,
+  MYR:4.0958, CAD:1.4075, AUD:1.4208, CHF:0.80978,
+  SEK:9.532321, NOK:9.549851, DKK:6.488391, DJF:177.721,
+  JPY:157.463017, CNY:6.758401, INR:95.06481
 };
 const SNAPSHOT_STAMP = "2026-08-04";
 
@@ -988,13 +1097,15 @@ const DEFAULT_TIERS = [
 const LS = "hawala.v1";
 
 const S = {
-  rates: {...SNAPSHOT},
+  rates: {...SNAPSHOT},         // the live layer (units per 1 USD)
   rateSource: "saved",          // saved | live | manual
   rateStamp: SNAPSHOT_STAMP,
+  liveAt: null,                 // epoch ms of the live quote itself
+  locked: null,                 // {rates, at} — the day's published prices
   overrides: {},                // ccy -> rate typed by hand
   tiers: structuredClone(DEFAULT_TIERS),
   cfg: { minFeeUsd:5, bankFeePct:1, payoutFeePct:0.5, fixedCostUsd:0 },
-  ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5, mode:"office" },
+  ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5, mode:"office", basis:"live", promo:"" },
   log: [],
   theme: null
 };
@@ -1002,7 +1113,7 @@ const S = {
 function save(){
   try{
     localStorage.setItem(LS, JSON.stringify({
-      overrides:S.overrides, tiers:S.tiers, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme
+      overrides:S.overrides, tiers:S.tiers, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme, locked:S.locked
     }));
   }catch(e){ /* private mode — run without persistence */ }
 }
@@ -1017,11 +1128,24 @@ function load(){
     if(d.ui)  Object.assign(S.ui,  d.ui);
     if(Array.isArray(d.log)) S.log = d.log;
     if(d.theme) S.theme = d.theme;
+    if(d.locked && d.locked.rates) S.locked = d.locked;
   }catch(e){ /* corrupt store — fall back to defaults */ }
 }
 
-/* effective rate table = live/snapshot, with manual overrides on top */
-function R(){ return {...S.rates, ...S.overrides, USD:1}; }
+/* Two independent rate layers:
+     live   — refreshed every 60s, what the market is doing right now
+     locked — the prices you published this morning and owe your clients
+   The quote runs on whichever basis is selected; drift compares the two. */
+function liveRates(){ return {...S.rates, ...S.overrides, USD:1}; }
+function lockedRates(){ return S.locked ? {...S.locked.rates, ...S.overrides, USD:1} : null; }
+
+function R(){
+  if(S.ui.basis === "locked"){
+    const L = lockedRates();
+    if(L) return L;
+  }
+  return liveRates();
+}
 function rateOf(c){ const r = R()[c]; return (typeof r === "number" && r > 0) ? r : null; }
 
 /* ============================================================
@@ -1276,6 +1400,192 @@ function renderReceipt(q){
 }
 
 /* ============================================================
+   DAILY LOCK  vs  LIVE
+   You publish a price in the morning and owe it all day. If the
+   market moves against you afterwards, the loss comes straight out
+   of the margin — so measure it in margin points, not just percent.
+   ============================================================ */
+function stampTime(ms){
+  if(!ms) return "—";
+  const d = new Date(ms);
+  const p = n => String(n).padStart(2,"0");
+  return `${p(d.getDate())}/${p(d.getMonth()+1)} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+/* What a promise made on locked rates is worth once live rates move.
+   Priced on a real transfer size — a single unit sits under the minimum
+   fee, where the floor swallows it and the margin figure goes nonsense. */
+function driftFor(send, payout, sendAmount){
+  const L = lockedRates(), V = liveRates();
+  if(!L || !L[send] || !L[payout] || !V[send] || !V[payout]) return null;
+
+  const lockPair = L[payout] / L[send];
+  const livePair = V[payout] / V[send];
+  const diffPct  = (livePair - lockPair) / lockPair * 100;
+
+  /* default to a $1,000-equivalent ticket: representative, and clear of the floor */
+  let amt = num(sendAmount);
+  if(!(amt > 0)) amt = 1000 / L[send];
+
+  const gLock  = amt / L[send];
+  const mLock  = marginOn(gLock);
+  const promised = (gLock - mLock.fee) * L[payout];
+  if(promised <= 0) return null;              // below the minimum — nothing to promise
+
+  const usdNow    = amt / V[send];
+  const usdNeeded = promised / V[payout];
+  const marginNow = usdNow > 0 ? (usdNow - usdNeeded) / usdNow * 100 : 0;
+  const marginLock= gLock  > 0 ? mLock.fee / gLock * 100 : 0;
+
+  const costs = num(S.cfg.bankFeePct) + num(S.cfg.payoutFeePct);
+  return {
+    send, payout, lockPair, livePair, diffPct,
+    netLock: marginLock - costs,
+    netNow:  marginNow  - costs,
+    delta:   marginNow - marginLock
+  };
+}
+
+function renderLock(){
+  const when  = document.getElementById("lock-when");
+  const lwhen = document.getElementById("live-when");
+  const lsrc  = document.getElementById("live-src");
+  const body  = document.getElementById("drift-body");
+  const flag  = document.getElementById("drift-flag");
+
+  when.textContent  = S.locked ? stampTime(S.locked.at) : "لم تثبّت بعد";
+  lwhen.textContent = S.liveAt ? stampTime(S.liveAt) : "—";
+  lsrc.textContent  = S.rateSource === "live"
+    ? `المصدر ${S.rateStamp} · يتجدد كل دقيقة`
+    : "غير متصل — الأسعار محفوظة";
+
+  document.getElementById("basis-locked").setAttribute("aria-pressed", S.ui.basis === "locked");
+  document.getElementById("basis-live").setAttribute("aria-pressed",   S.ui.basis === "live");
+
+  if(!S.locked){
+    body.innerHTML = `<tr><td colspan="5"><p class="empty">ثبّت أسعار اليوم أولًا ليظهر الفارق</p></td></tr>`;
+    flag.innerHTML = `<div class="callout"><span class="mark">◆</span>
+      <span>ثبّت الأسعار صباحًا، انشرها للعملاء، وراقب هنا كم ابتعد السوق عنها خلال اليوم.</span></div>`;
+    return;
+  }
+
+  const pairs = [];
+  const add = (a,b)=>{ if(!pairs.some(p=>p[0]===a && p[1]===b)) pairs.push([a,b]); };
+  add(S.ui.send, S.ui.payout);
+  add("GBP","SAR"); add("GBP","USD"); add("EUR","SAR"); add("USD","SAR");
+
+  /* row 0 is the pair actually being quoted, so price it on the real amount */
+  const rows = pairs.map(([a,b],i)=>
+    driftFor(a, b, (i === 0 && S.ui.dir === "fwd") ? S.ui.amount : null)).filter(Boolean);
+
+  body.innerHTML = rows.map(d=>{
+    const cls = Math.abs(d.diffPct) < 0.05 ? "flat" : (d.diffPct > 0 ? "up" : "dn");
+    const sign = d.diffPct > 0 ? "+" : "";
+    return `<tr>
+      <td class="n">${d.send} → ${d.payout}</td>
+      <td class="n">${fmtRate(d.lockPair)}</td>
+      <td class="n">${fmtRate(d.livePair)}</td>
+      <td class="drift ${cls}">${sign}${fmt(d.diffPct,3)}٪</td>
+      <td class="n">${fmt(d.netLock,2)}٪ → <strong style="color:${d.netNow < d.netLock ? "var(--crit)" : "var(--good)"}">${fmt(d.netNow,2)}٪</strong></td>
+    </tr>`;
+  }).join("");
+
+  /* alarm on the pair actually being quoted */
+  const main = rows[0];
+  if(!main){ flag.innerHTML = ""; return; }
+  const move = Math.abs(main.diffPct);
+  if(main.netNow <= 0){
+    flag.innerHTML = `<div class="callout alarm"><span class="mark">▲</span>
+      <span>السوق تحرك <strong>${fmt(main.diffPct,3)}٪</strong> ضدك — البيع بسعر اليوم المنشور صار <strong>خاسرًا</strong>.
+      أعد التثبيت فورًا وبلّغ العملاء بالسعر الجديد.</span></div>`;
+  }else if(main.delta < -0.5){
+    flag.innerHTML = `<div class="callout alarm"><span class="mark">▲</span>
+      <span>هبوط كبير: ربحك على سعر اليوم نزل من <strong>${fmt(main.netLock,2)}٪</strong> إلى <strong>${fmt(main.netNow,2)}٪</strong>.
+      يُنصح بإعادة التثبيت.</span></div>`;
+  }else if(move < 0.15){
+    flag.innerHTML = `<div class="callout"><span class="mark">◆</span>
+      <span>السوق مستقر — الفارق <strong>${fmt(main.diffPct,3)}٪</strong> فقط عن سعرك المنشور. لا حاجة لتغيير شيء.</span></div>`;
+  }else{
+    flag.innerHTML = `<div class="callout"><span class="mark">◆</span>
+      <span>تحرك السوق <strong>${fmt(main.diffPct,3)}٪</strong> ${main.delta >= 0 ? "لصالحك" : "ضدك"} —
+      ربحك الآن <strong>${fmt(main.netNow,2)}٪</strong> بدل <strong>${fmt(main.netLock,2)}٪</strong>.</span></div>`;
+  }
+}
+
+/* ============================================================
+   BROADCAST MESSAGE
+   Built from the published (locked) prices, never the live tick —
+   quoting a number that moves every minute is what destroys trust.
+   ============================================================ */
+const PROMO_SENDERS = ["GBP","EUR","USD","SAR"];
+
+function promoText(){
+  const payout = S.ui.promoPayout || "SAR";
+  const basis  = S.locked ? lockedRates() : liveRates();
+  const at     = S.locked ? S.locked.at : S.liveAt;
+  if(!basis || !basis[payout]) return "—";
+
+  const d = new Date(at || Date.now());
+  const p = n => String(n).padStart(2,"0");
+  const days = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+  const head = `${days[d.getDay()]} ${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} — ${p(d.getHours())}:${p(d.getMinutes())}`;
+
+  const L = [];
+  L.push(`💱 *أسعار التحويل إلى اليمن*`);
+  L.push(`🗓 ${head}`);
+  L.push(`━━━━━━━━━━━━━━`);
+  L.push(`*السعر لكل وحدة — ${CCY[payout].ar}*`);
+  L.push("");
+
+  /* The tiers make the rate improve with size, so a single headline number
+     would contradict the examples below it. Quote the range instead —
+     it is true, and the improvement is a selling point. */
+  for(const c of PROMO_SENDERS){
+    if(c === payout || !basis[c]) continue;
+    const rates = [];
+    for(const usd of LADDER_USD){
+      const amt = nice(usd * basis[c]);
+      if(!amt) continue;
+      const g = amt / basis[c];
+      const m = marginOn(g);
+      if(g - m.fee <= 0) continue;
+      rates.push(((g - m.fee) * basis[payout]) / amt);
+    }
+    if(!rates.length) continue;
+    const lo = Math.min(...rates), hi = Math.max(...rates);
+    L.push(`${CCY[c].ar} (${c})`);
+    L.push(Math.abs(hi - lo) / lo < 0.001
+      ? `   1 ${c} = *${fmtRate(lo)}* ${payout}`
+      : `   1 ${c} = من *${fmtRate(lo)}* إلى *${fmtRate(hi)}* ${payout}`);
+  }
+  L.push("");
+  L.push(`💡 كلما زاد المبلغ تحسّن السعر`);
+
+  const send = S.ui.send;
+  const rows = ladderRows();
+  if(rows.length && send !== payout){
+    L.push("");
+    L.push(`━━━━━━━━━━━━━━`);
+    L.push(`*أمثلة — ${CCY[send].ar}*`);
+    L.push("");
+    for(const r of rows) L.push(`  ${money(r.amt,send)}  ←  *${money(r.out,payout)}*`);
+  }
+
+  L.push("");
+  L.push(`━━━━━━━━━━━━━━`);
+  L.push(`✅ الرسوم شاملة داخل السعر`);
+  L.push(`✅ لا يوجد أي خصم عند الاستلام`);
+  L.push(`⏱ الأسعار سارية ليوم ${p(d.getDate())}/${p(d.getMonth()+1)}`);
+  const c = (S.ui.promo || "").trim();
+  if(c){ L.push(""); L.push(`📱 ${c}`); }
+  return L.join("\n");
+}
+
+function renderPromo(){
+  document.getElementById("promo-text").textContent = promoText();
+}
+
+/* ============================================================
    RENDER — quick ladder
    Answers "I want to send X, how much arrives?" at a glance,
    off the same engine as the main quote — never a second formula.
@@ -1415,8 +1725,10 @@ function renderLog(){
 
 function renderAll(){
   renderBoard();
+  renderLock();
   renderQuote();
   renderLadder();
+  renderPromo();
   renderTiers();
   renderOverrides();
   renderLog();
@@ -1429,29 +1741,59 @@ async function fetchRates(){
   const pip = document.getElementById("rate-pip");
   pip.className = "pip saved";
   pip.textContent = "جارٍ التحديث…";
-  /* never leave the badge spinning: give up after 8s and fall back */
+
   const ctrl = new AbortController();
   const bail = setTimeout(()=>ctrl.abort(), 8000);
-  try{
-    const res = await fetch("https://open.er-api.com/v6/latest/USD", {cache:"no-store", signal:ctrl.signal});
-    if(!res.ok) throw new Error(res.status);
-    const d = await res.json();
-    if(!d || !d.rates) throw new Error("bad payload");
+
+  /* fxratesapi refreshes every 60s and allows browser calls;
+     er-api is the daily-cadence backstop if it is ever unreachable */
+  const SOURCES = [
+    { name:"fxratesapi",
+      url:"https://api.fxratesapi.com/latest?base=USD",
+      parse:d => (d && d.success !== false && d.rates)
+        ? { rates:d.rates, at: d.timestamp ? d.timestamp*1000 : Date.now() } : null },
+    { name:"er-api",
+      url:"https://open.er-api.com/v6/latest/USD",
+      parse:d => (d && d.rates)
+        ? { rates:d.rates, at: d.time_last_update_unix ? d.time_last_update_unix*1000 : Date.now() } : null }
+  ];
+
+  let got = null, used = "";
+  for(const src of SOURCES){
+    try{
+      const res = await fetch(src.url, {cache:"no-store", signal:ctrl.signal});
+      if(!res.ok) continue;
+      const parsed = src.parse(await res.json());
+      if(parsed && typeof parsed.rates.EUR === "number"){ got = parsed; used = src.name; break; }
+    }catch(e){
+      if(e.name === "AbortError") break;   // out of time — stop trying
+    }
+  }
+  clearTimeout(bail);
+
+  if(got){
     for(const c of Object.keys(CCY)){
-      if(typeof d.rates[c] === "number") S.rates[c] = d.rates[c];
+      if(typeof got.rates[c] === "number") S.rates[c] = got.rates[c];
     }
     S.rates.USD = 1;
     S.rateSource = "live";
-    S.rateStamp  = (d.time_last_update_utc || "").slice(0,16) || new Date().toISOString().slice(0,10);
-  }catch(e){
-    /* offline, or the page is served under a CSP that blocks the host —
+    S.liveAt = got.at;
+    S.rateStamp = used;
+  }else{
+    /* offline, or served where outbound calls are blocked —
        the saved snapshot stays in effect and manual entry still works */
     S.rateSource = "saved";
-    S.rateStamp  = SNAPSHOT_STAMP + " — تعذّر الاتصال، استخدم التعديل اليدوي";
-  }finally{
-    clearTimeout(bail);
+    S.liveAt = null;
+    S.rateStamp = SNAPSHOT_STAMP + " — تعذّر الاتصال، استخدم التعديل اليدوي";
   }
   renderAll();
+}
+
+/* poll on the same 60s cadence the upstream feed publishes on */
+let pollTimer = null;
+function startPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(()=>{ if(!document.hidden) fetchRates(); }, 60000);
 }
 
 /* ============================================================
@@ -1483,7 +1825,7 @@ function bind(){
   $("s-payoutfee").value = S.cfg.payoutFeePct;
   $("s-fixedcost").value = S.cfg.fixedCostUsd;
 
-  const touch = ()=>{ save(); renderBoard(); renderQuote(); renderTiers(); renderLadder(); };
+  const touch = ()=>{ save(); renderBoard(); renderLock(); renderQuote(); renderTiers(); renderLadder(); renderPromo(); };
 
   /* direction switch */
   function setDir(d){
@@ -1521,24 +1863,24 @@ function bind(){
     const i = +t.dataset.tier, k = t.dataset.k;
     if(k === "max") S.tiers[i].max = t.value === "" ? null : num(t.value);
     else            S.tiers[i][k]  = num(t.value);
-    save(); renderQuote(); renderLadder();
+    save(); renderQuote(); renderLadder(); renderPromo();
   });
   $("tier-body").addEventListener("click", e=>{
     const b = e.target.closest("[data-del-tier]");
     if(!b) return;
     if(S.tiers.length <= 1) return;
     S.tiers.splice(+b.dataset.delTier, 1);
-    save(); renderTiers(); renderQuote(); renderLadder();
+    save(); renderTiers(); renderQuote(); renderLadder(); renderPromo();
   });
   $("btn-tier-add").onclick = ()=>{
     const last = S.tiers[S.tiers.length-1];
     const from = last ? (last.max === null ? last.min + 1000 : last.max) : 0;
     S.tiers.push({min:from, max:null, pct:3});
-    save(); renderTiers(); renderQuote(); renderLadder();
+    save(); renderTiers(); renderQuote(); renderLadder(); renderPromo();
   };
   $("btn-tier-reset").onclick = ()=>{
     S.tiers = structuredClone(DEFAULT_TIERS);
-    save(); renderTiers(); renderQuote(); renderLadder();
+    save(); renderTiers(); renderQuote(); renderLadder(); renderPromo();
   };
 
   /* manual rate overrides */
@@ -1550,7 +1892,7 @@ function bind(){
       const v = parseFloat(e.target.value);
       if(isFinite(v) && v > 0) S.overrides[c] = v;
     }
-    save(); renderBoard(); renderQuote(); renderLadder();
+    save(); renderBoard(); renderLock(); renderQuote(); renderLadder(); renderPromo();
   });
   $("ovr-body").addEventListener("click", e=>{
     const b = e.target.closest("[data-ovr-del]");
@@ -1643,6 +1985,46 @@ function bind(){
     setTimeout(()=>{ btn.textContent = "نسخ الجدول"; }, 1800);
   };
 
+  /* pricing basis: the published price, or the live tick */
+  function setBasis(b){
+    S.ui.basis = b;
+    save(); renderAll();
+  }
+  $("basis-locked").onclick = ()=>setBasis("locked");
+  $("basis-live").onclick   = ()=>setBasis("live");
+
+  $("btn-lock").onclick = ()=>{
+    S.locked = { rates:{...S.rates}, at: S.liveAt || Date.now() };
+    S.ui.basis = "locked";
+    save(); renderAll();
+  };
+  $("btn-unlock").onclick = ()=>{
+    if(!S.locked) return;
+    if(!confirm("إلغاء تثبيت أسعار اليوم؟")) return;
+    S.locked = null;
+    S.ui.basis = "live";
+    save(); renderAll();
+  };
+
+  /* broadcast message */
+  fillSelect($("promo-payout"), S.ui.promoPayout || "SAR");
+  $("promo-contact").value = S.ui.promo || "";
+  $("promo-payout").onchange = e=>{ S.ui.promoPayout = e.target.value; save(); renderPromo(); };
+  $("promo-contact").oninput = e=>{ S.ui.promo = e.target.value; save(); renderPromo(); };
+  $("btn-promo-copy").onclick = async ()=>{
+    const btn = $("btn-promo-copy");
+    try{ await navigator.clipboard.writeText(promoText()); btn.textContent = "تم النسخ"; }
+    catch(e){
+      const r = document.createRange(); r.selectNodeContents($("promo-text"));
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      btn.textContent = "حدِّد وانسخ";
+    }
+    setTimeout(()=>{ btn.textContent = "نسخ الرسالة"; }, 1800);
+  };
+  $("btn-promo-wa").onclick = ()=>{
+    window.open("https://wa.me/?text=" + encodeURIComponent(promoText()), "_blank", "noopener");
+  };
+
   $("btn-theme").onclick = ()=>{
     const cur = document.documentElement.getAttribute("data-theme");
     const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
@@ -1659,4 +2041,5 @@ applyTheme();
 bind();
 renderAll();
 fetchRates();
+startPolling();
 </script>
