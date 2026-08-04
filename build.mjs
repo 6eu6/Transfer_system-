@@ -1,12 +1,12 @@
-/* Wrap the Artifact fragment (index.html) into a standalone document for hosting.
-   The Artifact host supplies its own <head>, so index.html deliberately has none;
-   a hosted copy needs the doctype, language, direction and viewport itself. */
+/* Wrap each page fragment into a standalone document for hosting.
+   The Artifact host supplies its own <head>, so the fragments deliberately
+   have none; a hosted copy needs the doctype, language, direction and
+   viewport itself. */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 
-const body = await readFile(new URL("./index.html", import.meta.url), "utf8");
-const title = (body.match(/<title>([^<]*)<\/title>/) || [, "مكتب الحوالات"])[1];
+const PAGES = ["index.html", "guide.html"];
 
-const page = `<!doctype html>
+const shell = (title, body) => `<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -26,5 +26,11 @@ ${body}
 `;
 
 await mkdir(new URL("./dist/", import.meta.url), { recursive: true });
-await writeFile(new URL("./dist/index.html", import.meta.url), page);
-console.log(`dist/index.html  ${Buffer.byteLength(page)} bytes`);
+
+for (const page of PAGES) {
+  const body = await readFile(new URL("./" + page, import.meta.url), "utf8");
+  const title = (body.match(/<title>([^<]*)<\/title>/) || [, "مكتب الحوالات"])[1];
+  const out = shell(title, body);
+  await writeFile(new URL("./dist/" + page, import.meta.url), out);
+  console.log(`dist/${page}  ${Buffer.byteLength(out)} bytes`);
+}

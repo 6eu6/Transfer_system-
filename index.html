@@ -587,7 +587,28 @@ details.fold summary::before{ content:"▸ "; display:inline-block; transition:t
 details.fold[open] summary::before{ transform:rotate(90deg); }
 details.fold > div{ padding-top:12px; }
 
+.guide-link{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  font-family:var(--font-display);
+  font-size:13.5px;
+  font-weight:700;
+  color:var(--accent);
+  text-decoration:none;
+  border:1px solid var(--accent-line);
+  border-radius:100px;
+  padding:8px 18px;
+  margin-bottom:14px;
+  transition:background .15s;
+}
+.guide-link::before{ content:"◆"; font-size:11px; }
+.guide-link:hover{ background:var(--accent-soft); }
+
 footer.foot{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
   color:var(--muted);
   font-size:12px;
   text-align:center;
@@ -1069,6 +1090,7 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; }
   </section>
 
   <footer class="foot">
+    <a class="guide-link" href="./guide.html">دليل استخدام الموقع</a>
     كل البيانات محفوظة في هذا المتصفح فقط — لا يُرسل شيء إلى أي خادم
   </footer>
 
