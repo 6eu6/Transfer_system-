@@ -681,6 +681,16 @@ td.drift.flat{ color:var(--muted); }
 }
 .ladder tr.mine td{ background:var(--accent-soft); }
 
+/* On a phone the ladder is the whole point of the screen, so it must fit
+   rather than scroll: it only needs two columns to answer the question. */
+@media (max-width:560px){
+  table.ladder{ min-width:0; }
+  .ladder th:nth-child(3), .ladder td:nth-child(3){ display:none; }
+  .ladder th, .ladder td{ padding:8px 6px; }
+  .ladder td.big{ font-size:14px; white-space:nowrap; }
+  .ladder td.n{ white-space:nowrap; }
+}
+
 @media (prefers-reduced-motion:reduce){
   *{ animation:none !important; transition:none !important; }
 }
