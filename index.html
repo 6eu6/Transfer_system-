@@ -752,6 +752,23 @@ td.drift.flat{ color:var(--muted); }
   color:var(--text);
 }
 
+.mpick{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media (max-width:560px){ .mpick{ grid-template-columns:1fr; } }
+.mpick button{
+  display:flex; flex-direction:column; gap:2px; text-align:right;
+  background:var(--surface-2);
+  border:1.5px solid var(--line);
+  border-radius:var(--r-md);
+  padding:11px 14px;
+  transition:border-color .15s, background .15s;
+}
+.mpick button:hover{ border-color:var(--accent-line); }
+.mpick button[aria-pressed="true"]{ border-color:var(--accent); background:var(--accent-soft); }
+.mpick-t{ font-family:var(--font-display); font-size:14px; font-weight:700; color:var(--text); }
+.mpick-t::before{ content:"○ "; color:var(--muted); }
+.mpick button[aria-pressed="true"] .mpick-t::before{ content:"● "; color:var(--accent); }
+.mpick-n{ font-size:12px; color:var(--muted); line-height:1.5; }
+
 .btn-big{
   width:100%;
   padding:13px;
@@ -829,6 +846,20 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; color:var(--te
             <span class="qpick-n">٢</span>
             <span class="qpick-t">أبي يوصل مبلغ — كم أدفع؟</span>
           </button>
+        </div>
+
+        <div class="field">
+          <label>كيف يسلّمك العميل المبلغ؟</label>
+          <div class="mpick" role="group" aria-label="طريقة الاستلام">
+            <button id="m-bank" aria-pressed="true">
+              <span class="mpick-t">تحويل بنكي</span>
+              <span class="mpick-n">العميل يحوّل إلى حسابك</span>
+            </button>
+            <button id="m-cash" aria-pressed="false">
+              <span class="mpick-t">استلام كاش</span>
+              <span class="mpick-n">تستلمها يدًا بيد في أوروبا</span>
+            </button>
+          </div>
         </div>
 
         <div class="row-2">
@@ -998,8 +1029,8 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; color:var(--te
 
     <div class="card">
       <div class="card-head">
-        <h2>شرائح الربح</h2>
-        <span class="hint">تُحسب على القيمة بالدولار</span>
+        <h2>نسبة الربح — <span id="tier-method">تحويل بنكي</span></h2>
+        <span class="hint">تُحسب على القيمة بالدولار · بدّل الطريقة من الحاسبة</span>
       </div>
       <div class="card-body">
         <div class="tbl-scroll">
@@ -1014,6 +1045,13 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; color:var(--te
           <button class="btn btn-sm" id="btn-tier-add">+ شريحة</button>
           <button class="btn btn-sm" id="btn-tier-reset">استعادة المقترح</button>
         </div>
+        <div class="field" style="margin-top:4px">
+          <label for="s-incost">تكلفة الاستلام لهذه الطريقة ٪</label>
+          <input class="input num" type="number" id="s-incost" value="1" min="0" step="0.05" inputmode="decimal">
+        </div>
+
+        <div class="callout" id="method-note"></div>
+
         <div class="field" style="margin-top:4px">
           <label for="q-margin-mode">طريقة الاحتساب</label>
           <select class="input" id="q-margin-mode">
@@ -1040,15 +1078,11 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; color:var(--te
             <input class="input num" type="number" id="s-minfee" value="5" min="0" step="any" inputmode="decimal">
           </div>
           <div class="field">
-            <label for="s-bankfee">فرق البنك ٪</label>
-            <input class="input num" type="number" id="s-bankfee" value="1" min="0" step="0.05" inputmode="decimal">
-          </div>
-        </div>
-        <div class="row-eq">
-          <div class="field">
             <label for="s-payoutfee">تكلفة الصرّاف ٪</label>
             <input class="input num" type="number" id="s-payoutfee" value="0.5" min="0" step="0.05" inputmode="decimal">
           </div>
+        </div>
+        <div class="row-eq">
           <div class="field">
             <label for="s-fixedcost">تكلفة ثابتة $</label>
             <input class="input num" type="number" id="s-fixedcost" value="0" min="0" step="any" inputmode="decimal">
@@ -1145,14 +1179,19 @@ const SNAPSHOT = {
 };
 const SNAPSHOT_STAMP = "2026-08-04";
 
-const DEFAULT_TIERS = [
-  {min:0,     max:100,   pct:6.0},
-  {min:100,   max:500,   pct:5.0},
-  {min:500,   max:2000,  pct:4.5},
-  {min:2000,  max:5000,  pct:4.0},
-  {min:5000,  max:10000, pct:3.5},
-  {min:10000, max:null,  pct:3.0}
-];
+/* Two ways the client hands over the money. They price differently and,
+   just as importantly, they cost differently: a bank transfer is converted
+   into the EUR account and the bank takes a cut on the way in; cash handed
+   over in Europe never touches a bank on the inbound leg. */
+const METHODS = {
+  bank: { name:"تحويل بنكي", short:"بنكي",
+          hint:"العميل يحوّل إلى حسابك",
+          tiers:[{min:0, max:null, pct:4.5}], inCostPct:1.0 },
+  cash: { name:"استلام كاش", short:"كاش",
+          hint:"تستلمها يدًا بيد في أوروبا",
+          tiers:[{min:0, max:null, pct:8.0}], inCostPct:0.0 }
+};
+const DEFAULT_METHODS = structuredClone(METHODS);
 
 /* ============================================================
    STATE
@@ -1166,9 +1205,9 @@ const S = {
   liveAt: null,                 // epoch ms of the live quote itself
   locked: null,                 // {rates, at} — the day's published prices
   overrides: {},                // ccy -> rate typed by hand
-  tiers: structuredClone(DEFAULT_TIERS),
-  cfg: { minFeeUsd:5, bankFeePct:1, payoutFeePct:0.5, fixedCostUsd:0 },
-  ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5, tab:"calc", basis:"live", promo:"", promoCcys:["GBP","EUR","USD"] },
+  methods: structuredClone(DEFAULT_METHODS),
+  cfg: { minFeeUsd:5, payoutFeePct:0.5, fixedCostUsd:0 },
+  ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5, method:"bank", tab:"calc", basis:"live", promo:"", promoCcys:["GBP","EUR","USD"] },
   log: [],
   theme: null
 };
@@ -1176,7 +1215,7 @@ const S = {
 function save(){
   try{
     localStorage.setItem(LS, JSON.stringify({
-      overrides:S.overrides, tiers:S.tiers, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme, locked:S.locked
+      overrides:S.overrides, methods:S.methods, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme, locked:S.locked
     }));
   }catch(e){ /* private mode — run without persistence */ }
 }
@@ -1186,7 +1225,13 @@ function load(){
     if(!raw) return;
     const d = JSON.parse(raw);
     if(d.overrides) S.overrides = d.overrides;
-    if(Array.isArray(d.tiers) && d.tiers.length) S.tiers = d.tiers;
+    if(d.methods){
+      for(const k of Object.keys(S.methods)){
+        if(d.methods[k]) Object.assign(S.methods[k], d.methods[k]);
+      }
+    }else if(Array.isArray(d.tiers) && d.tiers.length){
+      S.methods.bank.tiers = d.tiers;          // carried over from before methods existed
+    }
     if(d.cfg) Object.assign(S.cfg, d.cfg);
     if(d.ui)  Object.assign(S.ui,  d.ui);
     if(Array.isArray(d.log)) S.log = d.log;
@@ -1383,8 +1428,11 @@ function fmtRate(n){
 function toUsd(amount, ccy){ const r = rateOf(ccy); return r ? amount / r : NaN; }
 function fromUsd(usd, ccy){ const r = rateOf(ccy); return r ? usd * r : NaN; }
 
+function M(){ return S.methods[S.ui.method] || S.methods.bank; }
+function inCostPct(){ return num(M().inCostPct); }
+
 function tierFor(usd){
-  const sorted = [...S.tiers].sort((a,b)=>a.min-b.min);
+  const sorted = [...M().tiers].sort((a,b)=>a.min-b.min);
   for(const t of sorted){
     const hi = (t.max === null || t.max === undefined || t.max === "") ? Infinity : t.max;
     if(usd >= t.min && usd < hi) return t;
@@ -1451,7 +1499,7 @@ function compute(){
 
   /* our side of the counter, all in EUR */
   const eurMid      = fromUsd(usdGross, "EUR");                       // mid-market value of client's money
-  const bankLoss    = eurMid * num(S.cfg.bankFeePct) / 100;           // bank/PSP takes its cut on the way in
+  const bankLoss    = eurMid * inCostPct() / 100;   // bank cut on a transfer; zero on cash in hand
   const eurReceived = eurMid - bankLoss;
   const eurPayout   = fromUsd(usdNet, "EUR");                          // what we owe the beneficiary
   const partnerCost = fromUsd(usdGross * num(S.cfg.payoutFeePct)/100 + num(S.cfg.fixedCostUsd), "EUR");
@@ -1569,7 +1617,7 @@ function renderQuote(){
     L("سعرك مقابل السوق",
       `<span class="num">${fmtRate(q.effRate)}</span> / <span class="num">${fmtRate(q.midRate)}</span>`) +
     L("يدخل حسابك", `<span class="num">${money(q.eurReceived,"EUR")}</span>`) +
-    L(`فرق البنك ${fmt(num(S.cfg.bankFeePct),2)}٪`, `<span class="num neg">−${money(q.bankLoss,"EUR")}</span>`) +
+    L(`تكلفة الاستلام ${fmt(inCostPct(),2)}٪ (${M().short})`, `<span class="num neg">−${money(q.bankLoss,"EUR")}</span>`) +
     L("تدفعه للمستفيد", `<span class="num neg">−${money(q.eurPayout,"EUR")}</span>`) +
     L("تكلفة الصرّاف", `<span class="num neg">−${money(q.partnerCost,"EUR")}</span>`) +
     L("الربح الصافي", `<span class="num">${money(q.netProfitEur,"EUR")}</span>`, "sum") +
@@ -1610,6 +1658,7 @@ function renderReceipt(q){
 المبلغ الواصل: ${money(q.payoutAmount, q.payout)}${inWords(q.payoutAmount, q.payout)}
 
 عملة الاستلام: ${CCY[q.payout].ar}
+طريقة الدفع: ${M().name}
 سعر الصرف: 1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}
 الرسوم شاملة — لا يوجد خصم عند الاستلام
 ────────────────────`;
@@ -1653,7 +1702,7 @@ function driftFor(send, payout, sendAmount){
   const marginNow = usdNow > 0 ? (usdNow - usdNeeded) / usdNow * 100 : 0;
   const marginLock= gLock  > 0 ? mLock.fee / gLock * 100 : 0;
 
-  const costs = num(S.cfg.bankFeePct) + num(S.cfg.payoutFeePct);
+  const costs = inCostPct() + num(S.cfg.payoutFeePct);
   return {
     send, payout, lockPair, livePair, diffPct,
     netLock: marginLock - costs,
@@ -1836,7 +1885,7 @@ function ladderRows(){
     const net = g - m.fee;
     if(net <= 0) continue;
     const out = fromUsd(net, payout);
-    const eur = fromUsd(g,"EUR")*(1-num(S.cfg.bankFeePct)/100)
+    const eur = fromUsd(g,"EUR")*(1-inCostPct()/100)
               - fromUsd(net,"EUR")
               - fromUsd(g*num(S.cfg.payoutFeePct)/100 + num(S.cfg.fixedCostUsd),"EUR");
     rows.push({amt, out, rate: out/amt, eur, pct:m.pct});
@@ -1867,7 +1916,7 @@ function renderTiers(){
   const q = compute();
   const activeMin = (q && !q.error && S.ui.marginMode === "auto") ? tierFor(q.usdGross).min : null;
 
-  document.getElementById("tier-body").innerHTML = S.tiers.map((t,i)=>{
+  document.getElementById("tier-body").innerHTML = M().tiers.map((t,i)=>{
     const hot = (t.min === activeMin) ? " class=\"hot\"" : "";
     const p100  = Math.max(100  * t.pct/100, num(S.cfg.minFeeUsd));
     const p1000 = Math.max(1000 * t.pct/100, num(S.cfg.minFeeUsd));
@@ -1886,6 +1935,26 @@ function renderTiers(){
 /* ============================================================
    RENDER — manual overrides
    ============================================================ */
+function renderMethodNote(){
+  const el = document.getElementById("method-note");
+  if(!el) return;
+  const q = compute();
+  if(!q || q.error){ el.innerHTML = ""; return; }
+
+  const keep = S.ui.method;
+  const rows = [];
+  for(const k of Object.keys(S.methods)){
+    S.ui.method = k;
+    const x = compute();
+    if(x && !x.error) rows.push({k, name:S.methods[k].name, pct:x.pct, net:x.netPct, out:x.payoutAmount, ccy:x.payout});
+  }
+  S.ui.method = keep;
+
+  el.innerHTML = `<span class="mark">◆</span><span>على هذا المبلغ: `
+    + rows.map(r=>`<strong>${r.name}</strong> ${fmt(r.pct,2)}٪ ← صافي ${fmt(r.net,2)}٪`).join(" &nbsp;·&nbsp; ")
+    + `</span>`;
+}
+
 function renderOverrides(){
   document.getElementById("ovr-body").innerHTML = Object.keys(CCY)
     .filter(c => c !== "USD")
@@ -1947,6 +2016,7 @@ function renderLog(){
 function renderAll(){
   renderBoard();
   renderLock();
+  renderMethodNote();
   renderQuote();
   renderLadder();
   renderPromo();
@@ -2042,11 +2112,10 @@ function bind(){
   $("fixed-wrap").hidden   = S.ui.marginMode !== "fixed";
 
   $("s-minfee").value    = S.cfg.minFeeUsd;
-  $("s-bankfee").value   = S.cfg.bankFeePct;
   $("s-payoutfee").value = S.cfg.payoutFeePct;
   $("s-fixedcost").value = S.cfg.fixedCostUsd;
 
-  const touch = ()=>{ save(); renderBoard(); renderLock(); renderQuote(); renderTiers(); renderLadder(); renderPromo(); };
+  const touch = ()=>{ save(); renderBoard(); renderLock(); renderQuote(); renderTiers(); renderLadder(); renderPromo(); renderMethodNote(); };
 
   /* the two questions this tool exists to answer */
   function setDir(d){
@@ -2073,35 +2142,52 @@ function bind(){
     touch();
   };
 
-  ["s-minfee","s-bankfee","s-payoutfee","s-fixedcost"].forEach(id=>{
-    const key = {"s-minfee":"minFeeUsd","s-bankfee":"bankFeePct","s-payoutfee":"payoutFeePct","s-fixedcost":"fixedCostUsd"}[id];
+  ["s-minfee","s-payoutfee","s-fixedcost"].forEach(id=>{
+    const key = {"s-minfee":"minFeeUsd","s-payoutfee":"payoutFeePct","s-fixedcost":"fixedCostUsd"}[id];
     $(id).oninput = e=>{ S.cfg[key] = num(e.target.value); touch(); };
   });
+
+  /* the inbound cost belongs to the selected method */
+  $("s-incost").oninput = e=>{ M().inCostPct = num(e.target.value); touch(); };
+
+  function setMethod(m){
+    S.ui.method = m;
+    $("m-bank").setAttribute("aria-pressed", m === "bank");
+    $("m-cash").setAttribute("aria-pressed", m === "cash");
+    $("s-incost").value = M().inCostPct;
+    $("tier-method").textContent = M().name;
+    touch();
+  }
+  $("m-bank").onclick = ()=>setMethod("bank");
+  $("m-cash").onclick = ()=>setMethod("cash");
+  setMethod(S.ui.method || "bank");
 
   /* tiers — edits and deletes are delegated off the tbody */
   $("tier-body").addEventListener("input", e=>{
     const t = e.target;
     if(!t.dataset.tier) return;
     const i = +t.dataset.tier, k = t.dataset.k;
-    if(k === "max") S.tiers[i].max = t.value === "" ? null : num(t.value);
-    else            S.tiers[i][k]  = num(t.value);
+    if(k === "max") M().tiers[i].max = t.value === "" ? null : num(t.value);
+    else            M().tiers[i][k]  = num(t.value);
     save(); renderQuote(); renderLadder(); renderPromo();
   });
   $("tier-body").addEventListener("click", e=>{
     const b = e.target.closest("[data-del-tier]");
     if(!b) return;
-    if(S.tiers.length <= 1) return;
-    S.tiers.splice(+b.dataset.delTier, 1);
+    if(M().tiers.length <= 1) return;
+    M().tiers.splice(+b.dataset.delTier, 1);
     save(); renderTiers(); renderQuote(); renderLadder(); renderPromo();
   });
   $("btn-tier-add").onclick = ()=>{
-    const last = S.tiers[S.tiers.length-1];
-    const from = last ? (last.max === null ? last.min + 1000 : last.max) : 0;
-    S.tiers.push({min:from, max:null, pct:3});
+    const t = M().tiers;
+    const last = t[t.length-1];
+    const from = last ? (last.max === null ? Math.max(last.min, 0) + 1000 : last.max) : 0;
+    if(last && last.max === null) last.max = from;
+    t.push({min:from, max:null, pct:last ? last.pct : 4.5});
     save(); renderTiers(); renderQuote(); renderLadder(); renderPromo();
   };
   $("btn-tier-reset").onclick = ()=>{
-    S.tiers = structuredClone(DEFAULT_TIERS);
+    S.methods[S.ui.method].tiers = structuredClone(DEFAULT_METHODS[S.ui.method].tiers);
     save(); renderTiers(); renderQuote(); renderLadder(); renderPromo();
   };
 
