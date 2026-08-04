@@ -106,6 +106,9 @@
    ============================================================ */
 *{ box-sizing:border-box; }
 
+/* class-based display rules outrank the UA's [hidden] — restore it */
+[hidden]{ display:none !important; }
+
 body{
   margin:0;
   background:var(--bg);
@@ -583,6 +586,65 @@ footer.foot{
   line-height:1.9;
 }
 
+/* ============================================================
+   CLIENT MODE — everything that reveals your margin is hidden.
+   One source of truth: same rates, same tiers, same engine.
+   ============================================================ */
+.wrap[data-mode="client"] .op-only{ display:none !important; }
+.wrap[data-mode="client"] .grid-2{ grid-template-columns:1fr; }
+
+.mode-switch{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  background:var(--sunken);
+  border:1px solid var(--line);
+  border-radius:100px;
+  padding:3px;
+}
+.mode-switch button{
+  border:0;
+  background:transparent;
+  border-radius:100px;
+  padding:5px 13px;
+  font-family:var(--font-display);
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+  transition:background .15s,color .15s;
+}
+.mode-switch button[aria-pressed="true"]{
+  background:var(--accent);
+  color:#fff;
+}
+
+/* a standing reminder that the screen is safe to show */
+.client-banner{
+  display:none;
+  align-items:center;
+  gap:9px;
+  background:var(--accent-soft);
+  border:1px solid var(--accent-line);
+  border-radius:var(--r-md);
+  padding:9px 13px;
+  font-size:12.5px;
+  color:var(--text-2);
+}
+.wrap[data-mode="client"] .client-banner{ display:flex; }
+.client-banner strong{ color:var(--accent); }
+
+/* ---- quick ladder ---- */
+.ladder td.big{
+  font-family:var(--font-data);
+  font-variant-numeric:tabular-nums;
+  direction:ltr;
+  unicode-bidi:isolate;
+  font-size:15px;
+  font-weight:700;
+  color:var(--accent);
+}
+.ladder tr.mine td{ background:var(--accent-soft); }
+
 @media (prefers-reduced-motion:reduce){
   *{ animation:none !important; transition:none !important; }
 }
@@ -603,13 +665,22 @@ footer.foot{
       <p>الحساب المستقبِل باليورو · العملة الوسطى الدولار · الصرف في اليمن دولار أو سعودي</p>
     </div>
     <div class="masthead-side">
-      <button class="btn btn-sm" id="btn-refresh">تحديث الأسعار</button>
+      <div class="mode-switch" role="group" aria-label="وضع العرض">
+        <button id="mode-office" aria-pressed="true">وضع المكتب</button>
+        <button id="mode-client" aria-pressed="false">وضع العميل</button>
+      </div>
+      <button class="btn btn-sm op-only" id="btn-refresh">تحديث الأسعار</button>
       <button class="btn btn-sm" id="btn-theme" title="تبديل السمة">◐</button>
     </div>
   </header>
 
+  <div class="client-banner">
+    <strong>◆ وضع العميل</strong>
+    <span>الشاشة الآن آمنة للعرض أمام العميل — بيانات المكتب مخفية.</span>
+  </div>
+
   <!-- ══════════ RATE BOARD ══════════ -->
-  <section class="board" aria-label="لوحة أسعار الصرف">
+  <section class="board op-only" aria-label="لوحة أسعار الصرف">
     <div class="board-head">
       <span class="board-title">لوحة الأسعار</span>
       <div class="board-status">
@@ -627,7 +698,7 @@ footer.foot{
     <section class="card">
       <div class="card-head">
         <h2>تسعير الحوالة</h2>
-        <div class="seg" role="group" aria-label="اتجاه الحساب">
+        <div class="seg op-only" role="group" aria-label="اتجاه الحساب">
           <button id="dir-fwd"  aria-pressed="true">من مبلغ العميل</button>
           <button id="dir-rev"  aria-pressed="false">من مبلغ الاستلام</button>
         </div>
@@ -650,7 +721,7 @@ footer.foot{
             <label for="q-payout">عملة التسليم في اليمن</label>
             <select class="input" id="q-payout"></select>
           </div>
-          <div class="field">
+          <div class="field op-only">
             <label for="q-margin-mode">شريحة الربح</label>
             <select class="input" id="q-margin-mode">
               <option value="auto">تلقائي حسب الشرائح</option>
@@ -659,7 +730,7 @@ footer.foot{
           </div>
         </div>
 
-        <div class="field" id="fixed-wrap" hidden>
+        <div class="field op-only" id="fixed-wrap" hidden>
           <label for="q-fixed">النسبة اليدوية ٪</label>
           <input class="input num" type="number" id="q-fixed" value="4.5" min="0" max="40" step="0.1" inputmode="decimal">
         </div>
@@ -673,7 +744,7 @@ footer.foot{
         <dl class="lines" id="quote-lines"></dl>
 
         <div class="toolbar">
-          <button class="btn btn-primary btn-sm" id="btn-save">حفظ في السجل</button>
+          <button class="btn btn-primary btn-sm op-only" id="btn-save">حفظ في السجل</button>
           <button class="btn btn-sm" id="btn-copy">نسخ نص العرض</button>
         </div>
 
@@ -686,7 +757,7 @@ footer.foot{
     </section>
 
     <!-- ---------- OUR BOOKS ---------- -->
-    <section class="card">
+    <section class="card op-only">
       <div class="card-head">
         <h2>دفترنا — الربح الصافي</h2>
         <span class="hint">ما يدخل حسابك باليورو مقابل ما تدفعه</span>
@@ -699,8 +770,34 @@ footer.foot{
 
   </div>
 
-  <!-- ══════════ MARGIN TIERS ══════════ -->
+  <!-- ══════════ QUICK LADDER ══════════ -->
   <section class="card">
+    <div class="card-head">
+      <h2>جدول سريع — كم يوصل اليمن؟</h2>
+      <span class="hint" id="ladder-hint">—</span>
+    </div>
+    <div class="card-body">
+      <div class="tbl-scroll">
+        <table class="ladder">
+          <thead>
+            <tr>
+              <th>يدفع العميل</th>
+              <th>يستلم المستفيد</th>
+              <th>السعر لكل وحدة</th>
+              <th class="op-only">ربحك الصافي</th>
+            </tr>
+          </thead>
+          <tbody id="ladder-body"></tbody>
+        </table>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-sm" id="btn-ladder-copy">نسخ الجدول</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ MARGIN TIERS ══════════ -->
+  <section class="card op-only">
     <div class="card-head">
       <h2>شرائح الربح</h2>
       <span class="hint">النسبة تنخفض كلما كبر المبلغ — تُحسب على القيمة بالدولار</span>
@@ -733,7 +830,7 @@ footer.foot{
   </section>
 
   <!-- ══════════ SETTINGS ══════════ -->
-  <section class="card">
+  <section class="card op-only">
     <div class="card-head">
       <h2>الإعدادات والتكاليف</h2>
       <span class="hint">تُحفظ تلقائيًا في هذا المتصفح</span>
@@ -797,7 +894,7 @@ footer.foot{
   </section>
 
   <!-- ══════════ LEDGER ══════════ -->
-  <section class="card">
+  <section class="card op-only">
     <div class="card-head">
       <h2>سجل الحوالات</h2>
       <div class="toolbar">
@@ -827,7 +924,7 @@ footer.foot{
   </section>
 
   <footer class="foot">
-    الأسعار العالمية من exchangerate-api · تُحدَّث يوميًا · لا تُعتمد وحدها لتسعير مبلغ كبير قبل مراجعة سعر الصرّاف<br>
+    <span class="op-only">الأسعار العالمية من exchangerate-api · تُحدَّث يوميًا · لا تُعتمد وحدها لتسعير مبلغ كبير قبل مراجعة سعر الصرّاف<br></span>
     كل البيانات محفوظة في هذا المتصفح فقط — لا يُرسل شيء إلى أي خادم
   </footer>
 
@@ -897,7 +994,7 @@ const S = {
   overrides: {},                // ccy -> rate typed by hand
   tiers: structuredClone(DEFAULT_TIERS),
   cfg: { minFeeUsd:5, bankFeePct:1, payoutFeePct:0.5, fixedCostUsd:0 },
-  ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5 },
+  ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5, mode:"office" },
   log: [],
   theme: null
 };
@@ -993,8 +1090,8 @@ function compute(){
   const { dir, send, payout } = S.ui;
   const amount = num(S.ui.amount);
 
-  if(!rateOf(send) || !rateOf(payout) || !rateOf("EUR") || amount <= 0){
-    return null;
+  if(!rateOf(send) || !rateOf(payout) || !rateOf("EUR") || !(amount > 0)){
+    return { error:"input" };
   }
 
   let usdGross, usdNet, sendAmount, payoutAmount, m;
@@ -1013,7 +1110,11 @@ function compute(){
     sendAmount = fromUsd(usdGross, send);
   }
 
-  if(usdNet <= 0) return null;
+  /* the minimum fee can swallow a very small transfer entirely —
+     say so plainly instead of falling through to a generic error */
+  if(usdNet <= 0){
+    return { error:"tooSmall", minSend: fromUsd(grossForNet(0.01), send), send };
+  }
 
   /* our side of the counter, all in EUR */
   const eurMid      = fromUsd(usdGross, "EUR");                       // mid-market value of client's money
@@ -1090,9 +1191,11 @@ function renderQuote(){
   const books     = document.getElementById("book-lines");
   const flag      = document.getElementById("book-flag");
 
-  if(!q){
+  if(!q || q.error){
     outPayout.textContent = "—";
-    outRate.textContent   = "أدخل مبلغًا صالحًا";
+    outRate.textContent = (q && q.error === "tooSmall")
+      ? `المبلغ أقل من الحد الأدنى — لا يقل عن ${money(q.minSend, q.send)} تقريبًا`
+      : "أدخل مبلغًا صالحًا";
     lines.innerHTML = "";
     books.innerHTML = `<p class="empty">في انتظار عملية صالحة</p>`;
     flag.innerHTML = "";
@@ -1101,19 +1204,32 @@ function renderQuote(){
   }
 
   outPayout.textContent = money(q.payoutAmount, q.payout);
-  outRate.innerHTML =
-    `سعرك للعميل <strong class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</strong>` +
-    ` &nbsp;·&nbsp; السوق <span class="num">${fmtRate(q.midRate)}</span>`;
+  /* the mid-market rate sits beside yours only in office mode —
+     showing both to a client exposes the spread */
+  outRate.innerHTML = S.ui.mode === "client"
+    ? `سعر الصرف <strong class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</strong>`
+      + ` &nbsp;·&nbsp; الرسوم شاملة`
+    : `سعرك للعميل <strong class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</strong>`
+      + ` &nbsp;·&nbsp; السوق <span class="num">${fmtRate(q.midRate)}</span>`;
 
   const L = (dt, dd, cls="") => `<div class="line ${cls}"><dt>${dt}</dt><dd>${dd}</dd></div>`;
 
-  lines.innerHTML =
-    L("العميل يدفع", `<span class="num">${money(q.sendAmount, q.send)}</span>`) +
-    L("قيمتها بالدولار (سعر السوق)", `<span class="num">${money(q.usdGross,"USD")}</span>`) +
-    L(`ربحك ${q.floored ? '<span class="chip warn">أقل ربح</span>' : `<span class="chip good">${fmt(q.pct,1)}٪</span>`}`,
-      `<span class="num">${money(q.fee,"USD")}</span>`) +
-    L("الصافي المُحوَّل", `<span class="num">${money(q.usdNet,"USD")}</span>`) +
-    L("المستفيد يستلم", `<span class="num">${money(q.payoutAmount, q.payout)}</span>`, "sum");
+  if(S.ui.mode === "client"){
+    /* nothing here may imply a margin: no USD leg, no fee, no percentage */
+    lines.innerHTML =
+      L("المبلغ المدفوع", `<span class="num">${money(q.sendAmount, q.send)}</span>`) +
+      L("سعر الصرف المعتمد", `<span class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</span>`) +
+      L("الرسوم", `شاملة داخل السعر`) +
+      L("المبلغ المستلم", `<span class="num">${money(q.payoutAmount, q.payout)}</span>`, "sum");
+  }else{
+    lines.innerHTML =
+      L("العميل يدفع", `<span class="num">${money(q.sendAmount, q.send)}</span>`) +
+      L("قيمتها بالدولار (سعر السوق)", `<span class="num">${money(q.usdGross,"USD")}</span>`) +
+      L(`ربحك ${q.floored ? '<span class="chip warn">أقل ربح</span>' : `<span class="chip good">${fmt(q.pct,1)}٪</span>`}`,
+        `<span class="num">${money(q.fee,"USD")}</span>`) +
+      L("الصافي المُحوَّل", `<span class="num">${money(q.usdNet,"USD")}</span>`) +
+      L("المستفيد يستلم", `<span class="num">${money(q.payoutAmount, q.payout)}</span>`, "sum");
+  }
 
   books.innerHTML =
     L("قيمة مبلغ العميل باليورو", `<span class="num">${money(q.eurMid,"EUR")}</span>`) +
@@ -1160,11 +1276,65 @@ function renderReceipt(q){
 }
 
 /* ============================================================
+   RENDER — quick ladder
+   Answers "I want to send X, how much arrives?" at a glance,
+   off the same engine as the main quote — never a second formula.
+   ============================================================ */
+function nice(v){
+  if(!isFinite(v) || v <= 0) return 0;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / mag;
+  const step = n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10;
+  return step * mag;
+}
+
+const LADDER_USD = [50,100,250,500,1000,2500,5000];
+
+function ladderRows(){
+  const {send, payout} = S.ui;
+  if(!rateOf(send) || !rateOf(payout)) return [];
+  const seen = new Set();
+  const rows = [];
+  for(const usd of LADDER_USD){
+    const amt = nice(fromUsd(usd, send));
+    if(!amt || seen.has(amt)) continue;
+    seen.add(amt);
+    const g = toUsd(amt, send);
+    const m = marginOn(g);
+    const net = g - m.fee;
+    if(net <= 0) continue;
+    const out = fromUsd(net, payout);
+    const eur = fromUsd(g,"EUR")*(1-num(S.cfg.bankFeePct)/100)
+              - fromUsd(net,"EUR")
+              - fromUsd(g*num(S.cfg.payoutFeePct)/100 + num(S.cfg.fixedCostUsd),"EUR");
+    rows.push({amt, out, rate: out/amt, eur, pct:m.pct});
+  }
+  return rows;
+}
+
+function renderLadder(){
+  const {send, payout} = S.ui;
+  const rows = ladderRows();
+  document.getElementById("ladder-hint").textContent =
+    `${CCY[send] ? CCY[send].ar : send} ← ${CCY[payout] ? CCY[payout].ar : payout}`;
+
+  const cur = num(S.ui.amount);
+  document.getElementById("ladder-body").innerHTML = rows.length
+    ? rows.map(r=>`<tr${(S.ui.dir==="fwd" && Math.abs(r.amt-cur)<1e-9) ? ' class="mine"' : ''}>
+        <td class="n">${money(r.amt, send)}</td>
+        <td class="big">${money(r.out, payout)}</td>
+        <td class="n">${fmtRate(r.rate)}</td>
+        <td class="n op-only" style="color:var(--money)">${fmt(r.eur,2)} €</td>
+      </tr>`).join("")
+    : `<tr><td colspan="4"><p class="empty">لا يمكن بناء الجدول بالأسعار الحالية</p></td></tr>`;
+}
+
+/* ============================================================
    RENDER — tiers
    ============================================================ */
 function renderTiers(){
   const q = compute();
-  const activeMin = (q && S.ui.marginMode === "auto") ? tierFor(q.usdGross).min : null;
+  const activeMin = (q && !q.error && S.ui.marginMode === "auto") ? tierFor(q.usdGross).min : null;
 
   document.getElementById("tier-body").innerHTML = S.tiers.map((t,i)=>{
     const hot = (t.min === activeMin) ? " class=\"hot\"" : "";
@@ -1246,6 +1416,7 @@ function renderLog(){
 function renderAll(){
   renderBoard();
   renderQuote();
+  renderLadder();
   renderTiers();
   renderOverrides();
   renderLog();
@@ -1258,8 +1429,11 @@ async function fetchRates(){
   const pip = document.getElementById("rate-pip");
   pip.className = "pip saved";
   pip.textContent = "جارٍ التحديث…";
+  /* never leave the badge spinning: give up after 8s and fall back */
+  const ctrl = new AbortController();
+  const bail = setTimeout(()=>ctrl.abort(), 8000);
   try{
-    const res = await fetch("https://open.er-api.com/v6/latest/USD", {cache:"no-store"});
+    const res = await fetch("https://open.er-api.com/v6/latest/USD", {cache:"no-store", signal:ctrl.signal});
     if(!res.ok) throw new Error(res.status);
     const d = await res.json();
     if(!d || !d.rates) throw new Error("bad payload");
@@ -1274,6 +1448,8 @@ async function fetchRates(){
        the saved snapshot stays in effect and manual entry still works */
     S.rateSource = "saved";
     S.rateStamp  = SNAPSHOT_STAMP + " — تعذّر الاتصال، استخدم التعديل اليدوي";
+  }finally{
+    clearTimeout(bail);
   }
   renderAll();
 }
@@ -1307,7 +1483,7 @@ function bind(){
   $("s-payoutfee").value = S.cfg.payoutFeePct;
   $("s-fixedcost").value = S.cfg.fixedCostUsd;
 
-  const touch = ()=>{ save(); renderBoard(); renderQuote(); renderTiers(); };
+  const touch = ()=>{ save(); renderBoard(); renderQuote(); renderTiers(); renderLadder(); };
 
   /* direction switch */
   function setDir(d){
@@ -1345,24 +1521,24 @@ function bind(){
     const i = +t.dataset.tier, k = t.dataset.k;
     if(k === "max") S.tiers[i].max = t.value === "" ? null : num(t.value);
     else            S.tiers[i][k]  = num(t.value);
-    save(); renderQuote();
+    save(); renderQuote(); renderLadder();
   });
   $("tier-body").addEventListener("click", e=>{
     const b = e.target.closest("[data-del-tier]");
     if(!b) return;
     if(S.tiers.length <= 1) return;
     S.tiers.splice(+b.dataset.delTier, 1);
-    save(); renderTiers(); renderQuote();
+    save(); renderTiers(); renderQuote(); renderLadder();
   });
   $("btn-tier-add").onclick = ()=>{
     const last = S.tiers[S.tiers.length-1];
     const from = last ? (last.max === null ? last.min + 1000 : last.max) : 0;
     S.tiers.push({min:from, max:null, pct:3});
-    save(); renderTiers(); renderQuote();
+    save(); renderTiers(); renderQuote(); renderLadder();
   };
   $("btn-tier-reset").onclick = ()=>{
     S.tiers = structuredClone(DEFAULT_TIERS);
-    save(); renderTiers(); renderQuote();
+    save(); renderTiers(); renderQuote(); renderLadder();
   };
 
   /* manual rate overrides */
@@ -1374,7 +1550,7 @@ function bind(){
       const v = parseFloat(e.target.value);
       if(isFinite(v) && v > 0) S.overrides[c] = v;
     }
-    save(); renderBoard(); renderQuote();
+    save(); renderBoard(); renderQuote(); renderLadder();
   });
   $("ovr-body").addEventListener("click", e=>{
     const b = e.target.closest("[data-ovr-del]");
@@ -1390,7 +1566,7 @@ function bind(){
   /* ledger */
   $("btn-save").onclick = ()=>{
     const q = compute();
-    if(!q) return;
+    if(!q || q.error) return;
     S.log.unshift({
       date: new Date().toLocaleDateString("en-GB"),
       send:q.send, payout:q.payout,
@@ -1440,6 +1616,32 @@ function bind(){
   };
 
   $("btn-refresh").onclick = fetchRates;
+
+  /* client mode: same engine, margin-bearing UI removed from the DOM view */
+  function setMode(m){
+    S.ui.mode = m;
+    document.querySelector(".wrap").setAttribute("data-mode", m);
+    $("mode-office").setAttribute("aria-pressed", m === "office");
+    $("mode-client").setAttribute("aria-pressed", m === "client");
+    if(m === "client" && S.ui.dir !== "fwd") setDir("fwd");
+    save(); renderQuote(); renderLadder();
+  }
+  $("mode-office").onclick = ()=>setMode("office");
+  $("mode-client").onclick = ()=>setMode("client");
+  setMode(S.ui.mode || "office");
+
+  $("btn-ladder-copy").onclick = async ()=>{
+    const rows = ladderRows();
+    if(!rows.length) return;
+    const {send, payout} = S.ui;
+    const txt = `كم يوصل اليمن؟\n${CCY[send].ar} ← ${CCY[payout].ar}\n${"─".repeat(24)}\n`
+      + rows.map(r=>`${money(r.amt,send)}  ←  ${money(r.out,payout)}`).join("\n")
+      + `\n${"─".repeat(24)}\nالأسعار سارية لمدة 30 دقيقة.`;
+    const btn = $("btn-ladder-copy");
+    try{ await navigator.clipboard.writeText(txt); btn.textContent = "تم النسخ"; }
+    catch(e){ btn.textContent = "تعذّر النسخ"; }
+    setTimeout(()=>{ btn.textContent = "نسخ الجدول"; }, 1800);
+  };
 
   $("btn-theme").onclick = ()=>{
     const cur = document.documentElement.getAttribute("data-theme");
