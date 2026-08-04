@@ -443,6 +443,14 @@ select.input{ cursor:pointer; }
   unicode-bidi:isolate;
   color:var(--text);
 }
+.in-words{
+  display:block;
+  font-size:13.5px;
+  font-weight:600;
+  color:var(--accent);
+  line-height:1.6;
+  margin-bottom:7px;
+}
 .payout-rate{
   font-size:13px;
   color:var(--text-2);
@@ -552,9 +560,11 @@ tfoot td{
   border:1px solid var(--line);
   border-radius:var(--r-md);
   padding:13px 15px;
-  font-family:var(--font-data);
-  font-size:12.5px;
-  line-height:1.85;
+  /* Arabic reads badly in a monospace face; keep digits tabular instead */
+  font-family:var(--font-body);
+  font-variant-numeric:tabular-nums;
+  font-size:13.5px;
+  line-height:1.9;
   white-space:pre-wrap;
   direction:rtl;
   max-height:270px;
@@ -819,12 +829,9 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; }
 
         <dl class="lines" id="quote-lines"></dl>
 
-        <button class="btn btn-primary btn-big" id="btn-copy">نسخ الرسالة للعميل</button>
+        <div class="receipt" id="receipt">—</div>
 
-        <details class="fold">
-          <summary>معاينة الرسالة</summary>
-          <div><div class="receipt" id="receipt">—</div></div>
-        </details>
+        <button class="btn btn-primary btn-big" id="btn-copy">نسخ الرسالة للعميل</button>
 
       </div>
     </div>
@@ -1178,6 +1185,152 @@ function R(){
 function rateOf(c){ const r = R()[c]; return (typeof r === "number" && r > 0) ? r : null; }
 
 /* ============================================================
+   تفقيط — amounts written out in Arabic words
+   ============================================================ */
+const ONES = ["","واحد","اثنان","ثلاثة","أربعة","خمسة","ستة","سبعة","ثمانية","تسعة"];
+const TEENS = ["عشرة","أحد عشر","اثنا عشر","ثلاثة عشر","أربعة عشر","خمسة عشر",
+               "ستة عشر","سبعة عشر","ثمانية عشر","تسعة عشر"];
+const TENS = ["","","عشرون","ثلاثون","أربعون","خمسون","ستون","سبعون","ثمانون","تسعون"];
+const HUNDREDS = ["","مئة","مئتان","ثلاثمئة","أربعمئة","خمسمئة","ستمئة","سبعمئة","ثمانمئة","تسعمئة"];
+
+/* scale names: [singular, dual, plural-for-3..10, accusative-for-11..99] */
+const SCALES = [
+  null,
+  ["ألف","ألفان","آلاف","ألفًا"],
+  ["مليون","مليونان","ملايين","مليونًا"],
+  ["مليار","ملياران","مليارات","مليارًا"]
+];
+
+/* 0–999 in words; Arabic puts units before tens (خمسة وعشرون) */
+function group(n){
+  const parts = [];
+  const h = Math.floor(n / 100), r = n % 100;
+  if(h) parts.push(HUNDREDS[h]);
+  if(r){
+    if(r < 10) parts.push(ONES[r]);
+    else if(r < 20) parts.push(TEENS[r - 10]);
+    else{
+      const u = r % 10, t = Math.floor(r / 10);
+      parts.push(u ? ONES[u] + " و" + TENS[t] : TENS[t]);
+    }
+  }
+  return parts.join(" و");
+}
+
+/* a counted noun agrees with the count: 1 singular, 2 dual, 3–10 plural,
+   11–99 accusative singular, 100+ singular */
+function countForm(n, forms){
+  const r = n % 100;
+  if(n === 1) return forms[0];
+  if(n === 2) return forms[1];
+  if(r >= 3 && r <= 10) return forms[2];
+  if(r === 0 || r === 1 || r === 2) return forms[0];
+  return forms[3];
+}
+
+function scaleWords(n, level){
+  if(n === 0) return "";
+  const f = SCALES[level];
+  if(!f) return group(n);
+  if(n === 1) return f[0];
+  if(n === 2) return f[1];
+  if(n === 200) return "مئتا " + f[0];          // مئتا ألف, not مئتان ألفًا
+  const r = n % 100;
+  if(r === 0) return group(n) + " " + f[0];              // مئة ألف
+  /* 101/102 thousand read as "مئة وألف" / "مئة وألفان" — the scale word
+     itself carries the one or two, so the numeral is not repeated */
+  if(r === 1) return group(n - 1) + " و" + f[0];
+  if(r === 2) return group(n - 2) + " و" + f[1];
+  if(r >= 3 && r <= 10) return group(n) + " " + f[2];
+  return group(n) + " " + f[3];
+}
+
+/* whole number -> words */
+function intToWords(n){
+  n = Math.floor(Math.abs(n));
+  if(n === 0) return "صفر";
+  const groups = [];
+  let level = 0;
+  while(n > 0 && level < SCALES.length){
+    groups.push([n % 1000, level]);
+    n = Math.floor(n / 1000);
+    level++;
+  }
+  if(n > 0) return null;                     // beyond مليار — refuse rather than mislead
+  return groups.reverse()
+    .filter(([v]) => v > 0)
+    .map(([v, l]) => scaleWords(v, l))
+    .join(" و");
+}
+
+/* currency word forms: [singular, dual, plural(3-10), accusative(11-99)] */
+const MONEY = {
+  SAR:{u:["ريال سعودي","ريالان سعوديان","ريالات سعودية","ريالًا سعوديًا"],
+       f:["هللة","هللتان","هللات","هللة"], fd:2},
+  USD:{u:["دولار أمريكي","دولاران أمريكيان","دولارات أمريكية","دولارًا أمريكيًا"],
+       f:["سنت","سنتان","سنتات","سنتًا"], fd:2},
+  GBP:{u:["جنيه إسترليني","جنيهان إسترلينيان","جنيهات إسترلينية","جنيهًا إسترلينيًا"],
+       f:["بنس","بنسان","بنسات","بنسًا"], fd:2},
+  EUR:{u:["يورو","يوروان","يوروات","يورو"],
+       f:["سنت","سنتان","سنتات","سنتًا"], fd:2},
+  AED:{u:["درهم إماراتي","درهمان إماراتيان","دراهم إماراتية","درهمًا إماراتيًا"],
+       f:["فلس","فلسان","فلوس","فلسًا"], fd:2},
+  YER:{u:["ريال يمني","ريالان يمنيان","ريالات يمنية","ريالًا يمنيًا"],
+       f:["فلس","فلسان","فلوس","فلسًا"], fd:0},
+  KWD:{u:["دينار كويتي","ديناران كويتيان","دنانير كويتية","دينارًا كويتيًا"],
+       f:["فلس","فلسان","فلوس","فلسًا"], fd:3},
+  QAR:{u:["ريال قطري","ريالان قطريان","ريالات قطرية","ريالًا قطريًا"],
+       f:["درهم","درهمان","دراهم","درهمًا"], fd:2},
+  OMR:{u:["ريال عماني","ريالان عمانيان","ريالات عمانية","ريالًا عمانيًا"],
+       f:["بيسة","بيستان","بيسات","بيسة"], fd:3},
+  JOD:{u:["دينار أردني","ديناران أردنيان","دنانير أردنية","دينارًا أردنيًا"],
+       f:["قرش","قرشان","قروش","قرشًا"], fd:3},
+  EGP:{u:["جنيه مصري","جنيهان مصريان","جنيهات مصرية","جنيهًا مصريًا"],
+       f:["قرش","قرشان","قروش","قرشًا"], fd:2},
+  TRY:{u:["ليرة تركية","ليرتان تركيتان","ليرات تركية","ليرة تركية"],
+       f:["قرش","قرشان","قروش","قرشًا"], fd:2}
+};
+
+/* a dual loses its nun when it governs the counted noun:
+   ألفان -> ألفا ريال,  مئتان -> مئتا ريال */
+function dualIdafa(w){
+  return w
+    .replace(/مئتان$/, "مئتا")
+    .replace(/ألفان$/, "ألفا")
+    .replace(/مليونان$/, "مليونا")
+    .replace(/ملياران$/, "مليارا");
+}
+
+/* amount -> "ألفان وأربعمئة واثنا عشر ريالًا سعوديًا وواحد وعشرون هللة" */
+function tafqit(amount, code, fallbackName){
+  if(!isFinite(amount) || amount < 0) return "";
+  const m = MONEY[code];
+  const dp = m ? m.fd : 2;
+  const factor = Math.pow(10, dp);
+  const total = Math.round(amount * factor);
+  const whole = Math.floor(total / factor);
+  const frac  = total % factor;
+
+  const wholeWords = intToWords(whole);
+  if(wholeWords === null) return "";          // too large to state safely
+
+  const out = [];
+  if(whole > 0 || frac === 0){
+    /* Arabic names the thing before the count for 1 and 2:
+       "ريال سعودي واحد", "ريالان سعوديان" — never "واحد ريال" */
+    if(m && whole === 1)      out.push(m.u[0] + " واحد");
+    else if(m && whole === 2) out.push(m.u[1]);
+    else out.push(dualIdafa(wholeWords) + " " + (m ? countForm(whole, m.u) : (fallbackName || code)));
+  }
+  if(frac > 0 && m){
+    if(frac === 1)      out.push(m.f[0]);
+    else if(frac === 2) out.push(m.f[1]);
+    else out.push(dualIdafa(intToWords(frac)) + " " + countForm(frac, m.f));
+  }
+  return out.join(" و");
+}
+
+/* ============================================================
    FORMATTING
    ============================================================ */
 function fmt(n, dp=2){
@@ -1364,7 +1517,12 @@ function renderQuote(){
     : money(q.payoutAmount, q.payout);
   document.getElementById("out-label").textContent = rev ? "يدفع العميل" : "يستلم المستفيد";
 
-  outRate.innerHTML = `سعر الصرف <strong class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</strong>`
+  const headAmt = rev ? q.sendAmount : q.payoutAmount;
+  const headCcy = rev ? q.send : q.payout;
+  const headWords = tafqit(headAmt, headCcy, CCY[headCcy] ? CCY[headCcy].ar : headCcy);
+  outRate.innerHTML =
+    (headWords ? `<span class="in-words">${headWords}</span>` : "")
+    + `سعر الصرف <strong class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</strong>`
     + ` &nbsp;·&nbsp; الرسوم شاملة`;
 
   const L = (dt, dd, cls="") => `<div class="line ${cls}"><dt>${dt}</dt><dd>${dd}</dd></div>`;
@@ -1406,6 +1564,12 @@ function renderQuote(){
   renderReceipt(q);
 }
 
+/* every amount is stated in figures and again in words */
+function inWords(amt, ccy){
+  const t = tafqit(amt, ccy, CCY[ccy] ? CCY[ccy].ar : ccy);
+  return t ? "\n   فقط " + t + " لا غير" : "";
+}
+
 function renderReceipt(q){
   const d = new Date();
   const stamp = d.toLocaleDateString("en-GB") + " " + d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
@@ -1414,14 +1578,13 @@ function renderReceipt(q){
 ────────────────────
 التاريخ: ${stamp}
 
-المبلغ المدفوع: ${money(q.sendAmount, q.send)}
-المبلغ الواصل: ${money(q.payoutAmount, q.payout)}
-عملة الاستلام: ${CCY[q.payout].ar}
+المبلغ المدفوع: ${money(q.sendAmount, q.send)}${inWords(q.sendAmount, q.send)}
 
+المبلغ الواصل: ${money(q.payoutAmount, q.payout)}${inWords(q.payoutAmount, q.payout)}
+
+عملة الاستلام: ${CCY[q.payout].ar}
 سعر الصرف: 1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}
 الرسوم شاملة — لا يوجد خصم عند الاستلام
-
-السعر ساري 30 دقيقة.
 ────────────────────`;
 }
 
