@@ -1,6 +1,21 @@
 # مكتب الحوالات — نظام التسعير والتحويل
 
-ملف واحد `index.html`. افتحه بأي متصفح. لا يحتاج تثبيت ولا خادم ولا إنترنت (إلا لتحديث الأسعار).
+ملف واحد `index.html`. افتحه بأي متصفح. لا يحتاج تثبيت ولا خادم.
+
+## النشر على Vercel (للأسعار اللحظية على الجوال)
+
+1. [vercel.com/new](https://vercel.com/new) ← استورد المستودع `Transfer_system-`
+2. اختر الفرع `claude/multi-currency-remittance-system-jt7xls`
+3. اضغط Deploy — الإعدادات جاهزة في `vercel.json`
+
+بعدها كل `git push` ينشر تلقائيًا. الرابط الناتج يسحب الأسعار كل 60 ثانية.
+
+> الرابط علني لمن يعرفه. لقفله عليك وحدك:
+> **Project → Settings → Deployment Protection → Password Protection**
+
+`node build.mjs` يبني `dist/index.html` — نسخة مستقلة كاملة (doctype، اتجاه RTL،
+و`viewport` الضروري للجوال). ملف `index.html` نفسه يبقى بلا `<head>` لأنه يُنشر
+أيضًا كـ Artifact الذي يضيف الغلاف بنفسه.
 
 ## المنطق
 
