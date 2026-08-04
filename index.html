@@ -45,6 +45,8 @@
   --r-md: 7px;
   --r-lg: 11px;
 
+  color-scheme:light;
+
   --font-display: "Noto Kufi Arabic","Cairo","Tajawal","Segoe UI","Dubai",system-ui,sans-serif;
   --font-body:    "Noto Naskh Arabic","Segoe UI","Geeza Pro","Dubai",system-ui,-apple-system,sans-serif;
   --font-data:    ui-monospace,"SF Mono","Menlo","DejaVu Sans Mono","Consolas",monospace;
@@ -52,6 +54,7 @@
 
 @media (prefers-color-scheme: dark){
   :root{
+    color-scheme:dark;
     --bg:        #0A1211;
     --surface:   #101C1A;
     --surface-2: #162321;
@@ -81,6 +84,7 @@
 
 /* explicit toggle must beat the media query in both directions */
 :root[data-theme="light"]{
+  color-scheme:light;
   --bg:#EDF1EE; --surface:#FFFFFF; --surface-2:#F5F8F5; --sunken:#E7ECE8;
   --line:#D4DED8; --line-soft:#E2E9E4;
   --text:#0E1A18; --text-2:#3C4E48; --muted:#6B7C75;
@@ -91,6 +95,7 @@
   --shadow-lift:0 2px 4px rgba(14,26,24,.06),0 16px 40px -16px rgba(14,26,24,.22);
 }
 :root[data-theme="dark"]{
+  color-scheme:dark;
   --bg:#0A1211; --surface:#101C1A; --surface-2:#162321; --sunken:#0C1615;
   --line:#22332F; --line-soft:#1A2826;
   --text:#E4EDE9; --text-2:#B0C2BC; --muted:#7E948C;
@@ -179,7 +184,7 @@ body{
 /* ============================================================
    CONTROLS
    ============================================================ */
-button, select, input{
+button, select, input, textarea{
   font-family:inherit;
   font-size:inherit;
   color:inherit;
@@ -755,7 +760,7 @@ td.drift.flat{ color:var(--muted); }
   font-weight:700;
 }
 
-textarea.input{ resize:vertical; line-height:1.7; font-size:14px; }
+textarea.input{ resize:vertical; line-height:1.7; font-size:14px; color:var(--text); }
 
 .pickrow{ display:flex; flex-wrap:wrap; gap:7px; }
 .pickrow label{
