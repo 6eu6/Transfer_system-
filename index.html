@@ -586,52 +586,6 @@ footer.foot{
   line-height:1.9;
 }
 
-/* ============================================================
-   CLIENT MODE — everything that reveals your margin is hidden.
-   One source of truth: same rates, same tiers, same engine.
-   ============================================================ */
-.wrap[data-mode="client"] .op-only{ display:none !important; }
-.wrap[data-mode="client"] .grid-2{ grid-template-columns:1fr; }
-
-.mode-switch{
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  background:var(--sunken);
-  border:1px solid var(--line);
-  border-radius:100px;
-  padding:3px;
-}
-.mode-switch button{
-  border:0;
-  background:transparent;
-  border-radius:100px;
-  padding:5px 13px;
-  font-family:var(--font-display);
-  font-size:12px;
-  font-weight:700;
-  color:var(--muted);
-  transition:background .15s,color .15s;
-}
-.mode-switch button[aria-pressed="true"]{
-  background:var(--accent);
-  color:#fff;
-}
-
-/* a standing reminder that the screen is safe to show */
-.client-banner{
-  display:none;
-  align-items:center;
-  gap:9px;
-  background:var(--accent-soft);
-  border:1px solid var(--accent-line);
-  border-radius:var(--r-md);
-  padding:9px 13px;
-  font-size:12.5px;
-  color:var(--text-2);
-}
-.wrap[data-mode="client"] .client-banner{ display:flex; }
-.client-banner strong{ color:var(--accent); }
 
 /* ---- daily lock vs live ---- */
 .lockgrid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -691,6 +645,108 @@ td.drift.flat{ color:var(--muted); }
   .ladder td.n{ white-space:nowrap; }
 }
 
+
+/* ============================================================
+   TABS + PANELS
+   ============================================================ */
+.tabs{
+  display:flex;
+  gap:4px;
+  background:var(--sunken);
+  border:1px solid var(--line);
+  border-radius:var(--r-lg);
+  padding:4px;
+}
+.tabs button{
+  flex:1;
+  border:0;
+  background:transparent;
+  border-radius:var(--r-md);
+  padding:9px 12px;
+  font-family:var(--font-display);
+  font-size:13.5px;
+  font-weight:700;
+  color:var(--muted);
+  transition:background .15s,color .15s;
+}
+.tabs button[aria-selected="true"]{
+  background:var(--surface);
+  color:var(--accent);
+  box-shadow:var(--shadow);
+}
+.panel{ display:flex; flex-direction:column; gap:20px; }
+.panel[hidden]{ display:none; }
+
+/* ---- the two questions ---- */
+.qpick{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media (max-width:560px){ .qpick{ grid-template-columns:1fr; } }
+.qpick button{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  text-align:right;
+  background:var(--surface-2);
+  border:1.5px solid var(--line);
+  border-radius:var(--r-md);
+  padding:13px 15px;
+  transition:border-color .15s, background .15s;
+}
+.qpick button:hover{ border-color:var(--accent-line); }
+.qpick button[aria-pressed="true"]{
+  border-color:var(--accent);
+  background:var(--accent-soft);
+}
+.qpick-n{
+  flex:none;
+  width:26px; height:26px;
+  display:grid; place-items:center;
+  border-radius:50%;
+  background:var(--line);
+  color:var(--text-2);
+  font-family:var(--font-data);
+  font-size:13px;
+  font-weight:700;
+}
+.qpick button[aria-pressed="true"] .qpick-n{ background:var(--accent); color:#fff; }
+.qpick-t{
+  font-family:var(--font-display);
+  font-size:14px;
+  font-weight:700;
+  line-height:1.35;
+  color:var(--text);
+}
+
+.btn-big{
+  width:100%;
+  padding:13px;
+  font-size:15px;
+  font-family:var(--font-display);
+  font-weight:700;
+}
+
+textarea.input{ resize:vertical; line-height:1.7; font-size:14px; }
+
+.pickrow{ display:flex; flex-wrap:wrap; gap:7px; }
+.pickrow label{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  border-radius:100px;
+  padding:5px 12px 5px 9px;
+  font-size:13px;
+  cursor:pointer;
+  transition:border-color .15s, background .15s;
+}
+.pickrow label:has(input:checked){
+  border-color:var(--accent);
+  background:var(--accent-soft);
+  color:var(--accent);
+  font-weight:600;
+}
+.pickrow input{ accent-color:var(--accent); }
+
 @media (prefers-reduced-motion:reduce){
   *{ animation:none !important; transition:none !important; }
 }
@@ -703,346 +759,309 @@ td.drift.flat{ color:var(--muted); }
 
 <div class="wrap">
 
-  <!-- ══════════ MASTHEAD ══════════ -->
   <header class="masthead">
     <div class="brand">
-      <div class="eyebrow">تسعير · تحويل · دفتر أرباح</div>
+      <div class="eyebrow">الدولار عملة وسطى · الحساب باليورو</div>
       <h1>مكتب الحوالات</h1>
-      <p>الحساب المستقبِل باليورو · العملة الوسطى الدولار · الصرف في اليمن دولار أو سعودي</p>
     </div>
     <div class="masthead-side">
-      <div class="mode-switch" role="group" aria-label="وضع العرض">
-        <button id="mode-office" aria-pressed="true">وضع المكتب</button>
-        <button id="mode-client" aria-pressed="false">وضع العميل</button>
-      </div>
-      <button class="btn btn-sm op-only" id="btn-refresh">تحديث الأسعار</button>
+      <span class="pip" id="rate-pip">—</span>
+      <button class="btn btn-sm" id="btn-refresh">تحديث</button>
       <button class="btn btn-sm" id="btn-theme" title="تبديل السمة">◐</button>
     </div>
   </header>
 
-  <div class="client-banner">
-    <strong>◆ وضع العميل</strong>
-    <span>الشاشة الآن آمنة للعرض أمام العميل — بيانات المكتب مخفية.</span>
-  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="calc"   aria-selected="true">الحاسبة</button>
+    <button role="tab" data-tab="promo"  aria-selected="false">الترويج</button>
+    <button role="tab" data-tab="office" aria-selected="false">المكتب</button>
+  </nav>
 
-  <!-- ══════════ RATE BOARD ══════════ -->
-  <section class="board op-only" aria-label="لوحة أسعار الصرف">
-    <div class="board-head">
-      <span class="board-title">لوحة الأسعار</span>
-      <div class="board-status">
-        <span class="pip saved" id="rate-pip">أسعار محفوظة</span>
-        <span class="board-stamp" id="rate-stamp">—</span>
-      </div>
-    </div>
-    <div class="board-row" id="board-row"></div>
-  </section>
 
-  <!-- ══════════ QUOTE + BOOKS ══════════ -->
-  <div class="grid-2">
+  <!-- ═════════════ 1 · CALCULATOR ═════════════ -->
+  <section class="panel" data-panel="calc">
 
-    <!-- ---------- QUOTE ---------- -->
-    <section class="card">
-      <div class="card-head">
-        <h2>تسعير الحوالة</h2>
-        <div class="seg op-only" role="group" aria-label="اتجاه الحساب">
-          <button id="dir-fwd"  aria-pressed="true">من مبلغ العميل</button>
-          <button id="dir-rev"  aria-pressed="false">من مبلغ الاستلام</button>
-        </div>
-      </div>
+    <div class="card">
       <div class="card-body">
+
+        <div class="qpick" role="group" aria-label="اختر السؤال">
+          <button id="dir-fwd" aria-pressed="true">
+            <span class="qpick-n">١</span>
+            <span class="qpick-t">معي مبلغ — كم يوصل؟</span>
+          </button>
+          <button id="dir-rev" aria-pressed="false">
+            <span class="qpick-n">٢</span>
+            <span class="qpick-t">أبي يوصل مبلغ — كم أدفع؟</span>
+          </button>
+        </div>
 
         <div class="row-2">
           <div class="field">
-            <label for="q-amount" id="q-amount-lbl">المبلغ الذي يدفعه العميل</label>
+            <label for="q-amount" id="q-amount-lbl">المبلغ</label>
             <input class="input num" type="number" id="q-amount" value="500" min="0" step="any" inputmode="decimal">
           </div>
           <div class="field">
-            <label for="q-send">عملة العميل</label>
+            <label for="q-send" id="q-send-lbl">عملة الإرسال</label>
             <select class="input" id="q-send"></select>
           </div>
         </div>
 
-        <div class="row-2">
-          <div class="field">
-            <label for="q-payout">عملة التسليم في اليمن</label>
-            <select class="input" id="q-payout"></select>
-          </div>
-          <div class="field op-only">
-            <label for="q-margin-mode">شريحة الربح</label>
-            <select class="input" id="q-margin-mode">
-              <option value="auto">تلقائي حسب الشرائح</option>
-              <option value="fixed">نسبة يدوية</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field op-only" id="fixed-wrap" hidden>
-          <label for="q-fixed">النسبة اليدوية ٪</label>
-          <input class="input num" type="number" id="q-fixed" value="4.5" min="0" max="40" step="0.1" inputmode="decimal">
+        <div class="field">
+          <label for="q-payout" id="q-payout-lbl">عملة التسليم</label>
+          <select class="input" id="q-payout"></select>
         </div>
 
         <div class="payout">
-          <span class="payout-label">يستلم المستفيد</span>
+          <span class="payout-label" id="out-label">يستلم المستفيد</span>
           <span class="payout-figure" id="out-payout">—</span>
           <span class="payout-rate" id="out-rate">—</span>
         </div>
 
         <dl class="lines" id="quote-lines"></dl>
 
-        <div class="toolbar">
-          <button class="btn btn-primary btn-sm op-only" id="btn-save">حفظ في السجل</button>
-          <button class="btn btn-sm" id="btn-copy">نسخ نص العرض</button>
-        </div>
+        <button class="btn btn-primary btn-big" id="btn-copy">نسخ الرسالة للعميل</button>
 
         <details class="fold">
-          <summary>نص العرض للعميل (واتساب)</summary>
+          <summary>معاينة الرسالة</summary>
           <div><div class="receipt" id="receipt">—</div></div>
         </details>
 
       </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>جدول سريع</h2>
+        <span class="hint" id="ladder-hint">—</span>
+      </div>
+      <div class="card-body">
+        <div class="tbl-scroll">
+          <table class="ladder">
+            <thead>
+              <tr>
+                <th>يدفع</th>
+                <th>يصل</th>
+                <th>السعر</th>
+              </tr>
+            </thead>
+            <tbody id="ladder-body"></tbody>
+          </table>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-sm" id="btn-ladder-copy">نسخ الجدول</button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- ═════════════ 2 · PROMOTION ═════════════ -->
+  <section class="panel" data-panel="promo" hidden>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>رسالة الترويج</h2>
+        <span class="hint">للنسخ إلى القروبات</span>
+      </div>
+      <div class="card-body">
+
+        <div class="row-eq">
+          <div class="field">
+            <label for="promo-payout">عملة التسليم في الرسالة</label>
+            <select class="input" id="promo-payout"></select>
+          </div>
+          <div class="field">
+            <label for="promo-contact">سطر التواصل</label>
+            <input class="input" type="text" id="promo-contact" placeholder="واتساب 00967xxxxxxxxx">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="promo-perks">المزايا — سطر لكل ميزة</label>
+          <textarea class="input" id="promo-perks" rows="5"></textarea>
+        </div>
+
+        <div class="field">
+          <label>العملات المعروضة</label>
+          <div class="pickrow" id="promo-ccys"></div>
+        </div>
+
+        <div class="receipt" id="promo-text">—</div>
+
+        <div class="toolbar">
+          <button class="btn btn-primary btn-sm" id="btn-promo-copy">نسخ الرسالة</button>
+          <button class="btn btn-sm" id="btn-promo-wa">فتح واتساب</button>
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- ═════════════ 3 · OFFICE ═════════════ -->
+  <section class="panel" data-panel="office" hidden>
+
+    <section class="board" aria-label="لوحة أسعار الصرف">
+      <div class="board-head">
+        <span class="board-title">لوحة الأسعار</span>
+        <div class="board-status">
+          <span class="board-stamp" id="rate-stamp">—</span>
+        </div>
+      </div>
+      <div class="board-row" id="board-row"></div>
     </section>
 
-    <!-- ---------- OUR BOOKS ---------- -->
-    <section class="card op-only">
+    <div class="card">
       <div class="card-head">
-        <h2>دفترنا — الربح الصافي</h2>
-        <span class="hint">ما يدخل حسابك باليورو مقابل ما تدفعه</span>
+        <h2>ربح العملية الحالية</h2>
+        <span class="hint">صافي ما يدخل حسابك باليورو</span>
       </div>
       <div class="card-body">
         <dl class="lines" id="book-lines"></dl>
         <div id="book-flag"></div>
-      </div>
-    </section>
-
-  </div>
-
-  <!-- ══════════ DAILY LOCK vs LIVE ══════════ -->
-  <section class="card op-only" id="lock-card">
-    <div class="card-head">
-      <h2>سعر اليوم المنشور ↔ السعر اللحظي</h2>
-      <div class="seg" role="group" aria-label="أساس التسعير">
-        <button id="basis-locked" aria-pressed="false">احسب بسعر اليوم</button>
-        <button id="basis-live"   aria-pressed="true">احسب باللحظي</button>
+        <div class="toolbar">
+          <button class="btn btn-sm" id="btn-save">حفظ في السجل</button>
+        </div>
       </div>
     </div>
-    <div class="card-body">
 
-      <div class="lockgrid">
-        <div class="lockbox">
-          <span class="lockbox-label">سعر اليوم المثبَّت</span>
-          <span class="lockbox-when" id="lock-when">لم تثبّت بعد</span>
-          <div class="toolbar" style="margin-top:10px">
-            <button class="btn btn-primary btn-sm" id="btn-lock">تثبيت أسعار الآن</button>
-            <button class="btn btn-sm" id="btn-unlock">إلغاء التثبيت</button>
+    <div class="card" id="lock-card">
+      <div class="card-head">
+        <h2>سعر اليوم ↔ اللحظي</h2>
+        <div class="seg" role="group" aria-label="أساس التسعير">
+          <button id="basis-locked" aria-pressed="false">سعر اليوم</button>
+          <button id="basis-live"   aria-pressed="true">اللحظي</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="lockgrid">
+          <div class="lockbox">
+            <span class="lockbox-label">المثبَّت</span>
+            <span class="lockbox-when" id="lock-when">لم تثبّت بعد</span>
+            <div class="toolbar" style="margin-top:10px">
+              <button class="btn btn-primary btn-sm" id="btn-lock">تثبيت الآن</button>
+              <button class="btn btn-sm" id="btn-unlock">إلغاء</button>
+            </div>
+          </div>
+          <div class="lockbox">
+            <span class="lockbox-label">اللحظي</span>
+            <span class="lockbox-when" id="live-when">—</span>
+            <span class="lockbox-src" id="live-src"></span>
           </div>
         </div>
-        <div class="lockbox">
-          <span class="lockbox-label">السعر اللحظي</span>
-          <span class="lockbox-when" id="live-when">—</span>
-          <span class="lockbox-src" id="live-src"></span>
+        <div id="drift-flag"></div>
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+              <tr><th>الزوج</th><th>سعر اليوم</th><th>اللحظي</th><th>الفارق</th><th>أثره على ربحك</th></tr>
+            </thead>
+            <tbody id="drift-body"></tbody>
+          </table>
         </div>
       </div>
+    </div>
 
-      <div id="drift-flag"></div>
-
-      <div class="tbl-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>الزوج</th>
-              <th>سعر اليوم</th>
-              <th>اللحظي</th>
-              <th>الفارق</th>
-              <th>أثره على ربحك</th>
-            </tr>
-          </thead>
-          <tbody id="drift-body"></tbody>
-        </table>
+    <div class="card">
+      <div class="card-head">
+        <h2>شرائح الربح</h2>
+        <span class="hint">تُحسب على القيمة بالدولار</span>
       </div>
-
-    </div>
-  </section>
-
-  <!-- ══════════ WHATSAPP BROADCAST ══════════ -->
-  <section class="card op-only">
-    <div class="card-head">
-      <h2>رسالة الأسعار للقروبات</h2>
-      <span class="hint">تُبنى من سعر اليوم المثبَّت — لا من اللحظي</span>
-    </div>
-    <div class="card-body">
-      <div class="row-eq">
-        <div class="field">
-          <label for="promo-payout">عملة التسليم في الرسالة</label>
-          <select class="input" id="promo-payout"></select>
+      <div class="card-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+              <tr><th>من $</th><th>إلى $</th><th>النسبة ٪</th><th>ربح 100$</th><th>ربح 1000$</th><th></th></tr>
+            </thead>
+            <tbody id="tier-body"></tbody>
+          </table>
         </div>
-        <div class="field">
-          <label for="promo-contact">سطر التواصل (اختياري)</label>
-          <input class="input" type="text" id="promo-contact" placeholder="مثال: للتواصل 00967xxxxxxxxx">
+        <div class="toolbar">
+          <button class="btn btn-sm" id="btn-tier-add">+ شريحة</button>
+          <button class="btn btn-sm" id="btn-tier-reset">استعادة المقترح</button>
+        </div>
+        <div class="field" style="margin-top:4px">
+          <label for="q-margin-mode">طريقة الاحتساب</label>
+          <select class="input" id="q-margin-mode">
+            <option value="auto">تلقائي حسب الشرائح</option>
+            <option value="fixed">نسبة يدوية</option>
+          </select>
+        </div>
+        <div class="field" id="fixed-wrap" hidden>
+          <label for="q-fixed">النسبة اليدوية ٪</label>
+          <input class="input num" type="number" id="q-fixed" value="4.5" min="0" max="40" step="0.1" inputmode="decimal">
         </div>
       </div>
-      <div class="receipt" id="promo-text">—</div>
-      <div class="toolbar">
-        <button class="btn btn-primary btn-sm" id="btn-promo-copy">نسخ الرسالة</button>
-        <button class="btn btn-sm" id="btn-promo-wa">فتح واتساب</button>
-      </div>
     </div>
-  </section>
 
-  <!-- ══════════ QUICK LADDER ══════════ -->
-  <section class="card">
-    <div class="card-head">
-      <h2>جدول سريع — كم يوصل اليمن؟</h2>
-      <span class="hint" id="ladder-hint">—</span>
-    </div>
-    <div class="card-body">
-      <div class="tbl-scroll">
-        <table class="ladder">
-          <thead>
-            <tr>
-              <th>يدفع العميل</th>
-              <th>يستلم المستفيد</th>
-              <th>السعر لكل وحدة</th>
-              <th class="op-only">ربحك الصافي</th>
-            </tr>
-          </thead>
-          <tbody id="ladder-body"></tbody>
-        </table>
+    <div class="card">
+      <div class="card-head">
+        <h2>التكاليف</h2>
+        <span class="hint">تُحفظ في هذا المتصفح</span>
       </div>
-      <div class="toolbar">
-        <button class="btn btn-sm" id="btn-ladder-copy">نسخ الجدول</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════ MARGIN TIERS ══════════ -->
-  <section class="card op-only">
-    <div class="card-head">
-      <h2>شرائح الربح</h2>
-      <span class="hint">النسبة تنخفض كلما كبر المبلغ — تُحسب على القيمة بالدولار</span>
-    </div>
-    <div class="card-body">
-      <div class="tbl-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>من (دولار)</th>
-              <th>إلى (دولار)</th>
-              <th>النسبة ٪</th>
-              <th>ربح 100$</th>
-              <th>ربح 1000$</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tier-body"></tbody>
-        </table>
-      </div>
-      <div class="toolbar">
-        <button class="btn btn-sm" id="btn-tier-add">+ شريحة</button>
-        <button class="btn btn-sm" id="btn-tier-reset">استعادة المقترح</button>
-      </div>
-      <div class="callout">
-        <span class="mark">◆</span>
-        <span>النسبة الظاهرة هنا <strong>إجمالية</strong>. بعد خصم فرق البنك على GBP→EUR وتكلفة الصرّاف في اليمن يبقى لك تقريبًا نصف إلى ثلثي الرقم. اضبط التكاليف في الإعدادات ليُحسب الصافي بدقة.</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════ SETTINGS ══════════ -->
-  <section class="card op-only">
-    <div class="card-head">
-      <h2>الإعدادات والتكاليف</h2>
-      <span class="hint">تُحفظ تلقائيًا في هذا المتصفح</span>
-    </div>
-    <div class="card-body">
-
-      <div class="row-eq">
-        <div class="field">
-          <label for="s-minfee">أقل ربح للحوالة (دولار)</label>
-          <input class="input num" type="number" id="s-minfee" value="5" min="0" step="any" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label for="s-bankfee">فرق البنك على تحويل العميل ٪</label>
-          <input class="input num" type="number" id="s-bankfee" value="1" min="0" step="0.05" inputmode="decimal">
-        </div>
-      </div>
-
-      <div class="row-eq">
-        <div class="field">
-          <label for="s-payoutfee">تكلفة الصرّاف في اليمن ٪</label>
-          <input class="input num" type="number" id="s-payoutfee" value="0.5" min="0" step="0.05" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label for="s-fixedcost">تكلفة ثابتة لكل حوالة (دولار)</label>
-          <input class="input num" type="number" id="s-fixedcost" value="0" min="0" step="any" inputmode="decimal">
-        </div>
-      </div>
-
-      <div class="callout">
-        <span class="mark">◆</span>
-        <span><strong>فرق البنك</strong> هو ما يأكله البنك أو الوسيط عند تحويل عملة العميل إلى اليورو في حسابك. راقب كشف حسابك أول شهر واضبط الرقم على الواقع — هو أكبر مصدر لتآكل الربح.</span>
-      </div>
-
-      <details class="fold">
-        <summary>تعديل الأسعار يدويًا (سعر السوق في اليمن)</summary>
-        <div>
-          <div class="callout">
-            <span class="mark">◆</span>
-            <span>الأسعار المسحوبة من الإنترنت هي سعر السوق العالمي. سعر الصرّاف في عدن أو صنعاء يختلف. اكتب السعر الحقيقي هنا وسيُستخدم بدل السعر العالمي، وتتحول اللوحة إلى وضع «يدوي».</span>
+      <div class="card-body">
+        <div class="row-eq">
+          <div class="field">
+            <label for="s-minfee">أقل ربح للحوالة $</label>
+            <input class="input num" type="number" id="s-minfee" value="5" min="0" step="any" inputmode="decimal">
           </div>
-          <div class="tbl-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>العملة</th>
-                  <th>مقابل 1 دولار</th>
-                  <th>المصدر</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="ovr-body"></tbody>
-            </table>
-          </div>
-          <div class="toolbar" style="margin-top:12px">
-            <button class="btn btn-sm" id="btn-ovr-clear">مسح كل التعديلات اليدوية</button>
+          <div class="field">
+            <label for="s-bankfee">فرق البنك ٪</label>
+            <input class="input num" type="number" id="s-bankfee" value="1" min="0" step="0.05" inputmode="decimal">
           </div>
         </div>
-      </details>
-
-    </div>
-  </section>
-
-  <!-- ══════════ LEDGER ══════════ -->
-  <section class="card op-only">
-    <div class="card-head">
-      <h2>سجل الحوالات</h2>
-      <div class="toolbar">
-        <button class="btn btn-sm" id="btn-export">تصدير CSV</button>
-        <button class="btn btn-sm" id="btn-clear-log">مسح السجل</button>
+        <div class="row-eq">
+          <div class="field">
+            <label for="s-payoutfee">تكلفة الصرّاف ٪</label>
+            <input class="input num" type="number" id="s-payoutfee" value="0.5" min="0" step="0.05" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="s-fixedcost">تكلفة ثابتة $</label>
+            <input class="input num" type="number" id="s-fixedcost" value="0" min="0" step="any" inputmode="decimal">
+          </div>
+        </div>
+        <details class="fold">
+          <summary>تعديل الأسعار يدويًا (سعر الصرّاف في اليمن)</summary>
+          <div>
+            <div class="tbl-scroll">
+              <table>
+                <thead><tr><th>العملة</th><th>مقابل 1 دولار</th><th>المصدر</th><th></th></tr></thead>
+                <tbody id="ovr-body"></tbody>
+              </table>
+            </div>
+            <div class="toolbar" style="margin-top:12px">
+              <button class="btn btn-sm" id="btn-ovr-clear">مسح التعديلات اليدوية</button>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
-    <div class="card-body">
-      <div class="tbl-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>التاريخ</th>
-              <th>العميل يدفع</th>
-              <th>القيمة $</th>
-              <th>المستفيد يستلم</th>
-              <th>٪</th>
-              <th>ربح صافي €</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="log-body"></tbody>
-          <tfoot id="log-foot"></tfoot>
-        </table>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>سجل الحوالات</h2>
+        <div class="toolbar">
+          <button class="btn btn-sm" id="btn-export">تصدير CSV</button>
+          <button class="btn btn-sm" id="btn-clear-log">مسح</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+              <tr><th>التاريخ</th><th>يدفع</th><th>القيمة $</th><th>يستلم</th><th>٪</th><th>ربح €</th><th></th></tr>
+            </thead>
+            <tbody id="log-body"></tbody>
+            <tfoot id="log-foot"></tfoot>
+          </table>
+        </div>
       </div>
     </div>
+
   </section>
 
   <footer class="foot">
-    <span class="op-only">الأسعار العالمية من exchangerate-api · تُحدَّث يوميًا · لا تُعتمد وحدها لتسعير مبلغ كبير قبل مراجعة سعر الصرّاف<br></span>
     كل البيانات محفوظة في هذا المتصفح فقط — لا يُرسل شيء إلى أي خادم
   </footer>
 
@@ -1115,7 +1134,7 @@ const S = {
   overrides: {},                // ccy -> rate typed by hand
   tiers: structuredClone(DEFAULT_TIERS),
   cfg: { minFeeUsd:5, bankFeePct:1, payoutFeePct:0.5, fixedCostUsd:0 },
-  ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5, mode:"office", basis:"live", promo:"" },
+  ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5, tab:"calc", basis:"live", promo:"", promoCcys:["GBP","EUR","USD"] },
   log: [],
   theme: null
 };
@@ -1332,49 +1351,46 @@ function renderQuote(){
       : "أدخل مبلغًا صالحًا";
     lines.innerHTML = "";
     books.innerHTML = `<p class="empty">في انتظار عملية صالحة</p>`;
+    document.getElementById("out-label").textContent = S.ui.dir === "rev" ? "يدفع العميل" : "يستلم المستفيد";
     flag.innerHTML = "";
     document.getElementById("receipt").textContent = "—";
     return;
   }
 
-  outPayout.textContent = money(q.payoutAmount, q.payout);
-  /* the mid-market rate sits beside yours only in office mode —
-     showing both to a client exposes the spread */
-  outRate.innerHTML = S.ui.mode === "client"
-    ? `سعر الصرف <strong class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</strong>`
-      + ` &nbsp;·&nbsp; الرسوم شاملة`
-    : `سعرك للعميل <strong class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</strong>`
-      + ` &nbsp;·&nbsp; السوق <span class="num">${fmtRate(q.midRate)}</span>`;
+  /* the headline is the ANSWER to the chosen question, not the input */
+  const rev = S.ui.dir === "rev";
+  outPayout.textContent = rev
+    ? money(q.sendAmount, q.send)
+    : money(q.payoutAmount, q.payout);
+  document.getElementById("out-label").textContent = rev ? "يدفع العميل" : "يستلم المستفيد";
+
+  outRate.innerHTML = `سعر الصرف <strong class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</strong>`
+    + ` &nbsp;·&nbsp; الرسوم شاملة`;
 
   const L = (dt, dd, cls="") => `<div class="line ${cls}"><dt>${dt}</dt><dd>${dd}</dd></div>`;
 
-  if(S.ui.mode === "client"){
-    /* nothing here may imply a margin: no USD leg, no fee, no percentage */
-    lines.innerHTML =
-      L("المبلغ المدفوع", `<span class="num">${money(q.sendAmount, q.send)}</span>`) +
-      L("سعر الصرف المعتمد", `<span class="num">1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}</span>`) +
-      L("الرسوم", `شاملة داخل السعر`) +
-      L("المبلغ المستلم", `<span class="num">${money(q.payoutAmount, q.payout)}</span>`, "sum");
-  }else{
-    lines.innerHTML =
-      L("العميل يدفع", `<span class="num">${money(q.sendAmount, q.send)}</span>`) +
-      L("قيمتها بالدولار (سعر السوق)", `<span class="num">${money(q.usdGross,"USD")}</span>`) +
-      L(`ربحك ${q.floored ? '<span class="chip warn">أقل ربح</span>' : `<span class="chip good">${fmt(q.pct,1)}٪</span>`}`,
-        `<span class="num">${money(q.fee,"USD")}</span>`) +
-      L("الصافي المُحوَّل", `<span class="num">${money(q.usdNet,"USD")}</span>`) +
-      L("المستفيد يستلم", `<span class="num">${money(q.payoutAmount, q.payout)}</span>`, "sum");
-  }
+  /* calculator view: never shows a margin, so it is safe to hand to a client */
+  lines.innerHTML =
+    L("يدفع", `<span class="num">${money(q.sendAmount, q.send)}</span>`) +
+    L("يصل", `<span class="num">${money(q.payoutAmount, q.payout)}</span>`, "sum");
 
+  /* office view: the full picture behind the same quote */
   books.innerHTML =
-    L("قيمة مبلغ العميل باليورو", `<span class="num">${money(q.eurMid,"EUR")}</span>`) +
+    L("العميل يدفع", `<span class="num">${money(q.sendAmount, q.send)}</span>`) +
+    L("قيمتها بالدولار", `<span class="num">${money(q.usdGross,"USD")}</span>`) +
+    L(`ربحك ${q.floored ? '<span class="chip warn">أقل ربح</span>' : `<span class="chip good">${fmt(q.pct,1)}٪</span>`}`,
+      `<span class="num">${money(q.fee,"USD")}</span>`) +
+    L("المستفيد يستلم", `<span class="num">${money(q.payoutAmount, q.payout)}</span>`) +
+    L("سعرك مقابل السوق",
+      `<span class="num">${fmtRate(q.effRate)}</span> / <span class="num">${fmtRate(q.midRate)}</span>`) +
+    L("يدخل حسابك", `<span class="num">${money(q.eurReceived,"EUR")}</span>`) +
     L(`فرق البنك ${fmt(num(S.cfg.bankFeePct),2)}٪`, `<span class="num neg">−${money(q.bankLoss,"EUR")}</span>`) +
-    L("الداخل فعليًا إلى حسابك", `<span class="num">${money(q.eurReceived,"EUR")}</span>`) +
-    L("قيمة ما تدفعه للمستفيد", `<span class="num neg">−${money(q.eurPayout,"EUR")}</span>`) +
-    L("تكلفة الصرّاف والثابتة", `<span class="num neg">−${money(q.partnerCost,"EUR")}</span>`) +
+    L("تدفعه للمستفيد", `<span class="num neg">−${money(q.eurPayout,"EUR")}</span>`) +
+    L("تكلفة الصرّاف", `<span class="num neg">−${money(q.partnerCost,"EUR")}</span>`) +
     L("الربح الصافي", `<span class="num">${money(q.netProfitEur,"EUR")}</span>`, "sum") +
     L("أي ما يعادل", `<span class="num">${money(q.netProfitUsd,"USD")}</span> · <span class="num">${fmt(q.netPct,2)}٪</span>`);
 
-  /* honest warning: the headline % is not what lands in your pocket */
+  /* the headline percentage is not what reaches your pocket — say so */
   if(q.netProfitEur <= 0){
     flag.innerHTML = `<div class="callout alarm"><span class="mark">▲</span>
       <span>هذه العملية <strong>خاسرة</strong> بعد التكاليف. ارفع النسبة أو أقل ربح للحوالة.</span></div>`;
@@ -1399,13 +1415,13 @@ function renderReceipt(q){
 التاريخ: ${stamp}
 
 المبلغ المدفوع: ${money(q.sendAmount, q.send)}
+المبلغ الواصل: ${money(q.payoutAmount, q.payout)}
 عملة الاستلام: ${CCY[q.payout].ar}
-المبلغ المستلم: ${money(q.payoutAmount, q.payout)}
 
-سعر الصرف المعتمد: 1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}
-الرسوم: شاملة داخل السعر — لا يوجد خصم إضافي عند الاستلام
+سعر الصرف: 1 ${q.send} = ${fmtRate(q.effRate)} ${q.payout}
+الرسوم شاملة — لا يوجد خصم عند الاستلام
 
-هذا السعر ساري لمدة 30 دقيقة.
+السعر ساري 30 دقيقة.
 ────────────────────`;
 }
 
@@ -1527,7 +1543,13 @@ function renderLock(){
    Built from the published (locked) prices, never the live tick —
    quoting a number that moves every minute is what destroys trust.
    ============================================================ */
-const PROMO_SENDERS = ["GBP","EUR","USD","SAR"];
+const PROMO_SENDERS = ["GBP","EUR","USD","SAR","AED","CAD","TRY","MYR"];
+const DEFAULT_PERKS = [
+  "الرسوم شاملة داخل السعر",
+  "لا يوجد أي خصم عند الاستلام",
+  "التسليم في نفس اليوم",
+  "كلما زاد المبلغ تحسّن السعر"
+];
 
 function promoText(){
   const payout = S.ui.promoPayout || "SAR";
@@ -1550,7 +1572,8 @@ function promoText(){
   /* The tiers make the rate improve with size, so a single headline number
      would contradict the examples below it. Quote the range instead —
      it is true, and the improvement is a selling point. */
-  for(const c of PROMO_SENDERS){
+  const picked = (S.ui.promoCcys && S.ui.promoCcys.length) ? S.ui.promoCcys : ["GBP","EUR","USD"];
+  for(const c of picked){
     if(c === payout || !basis[c]) continue;
     const rates = [];
     for(const usd of LADDER_USD){
@@ -1568,8 +1591,6 @@ function promoText(){
       ? `   1 ${c} = *${fmtRate(lo)}* ${payout}`
       : `   1 ${c} = من *${fmtRate(lo)}* إلى *${fmtRate(hi)}* ${payout}`);
   }
-  L.push("");
-  L.push(`💡 كلما زاد المبلغ تحسّن السعر`);
 
   const send = S.ui.send;
   const rows = ladderRows();
@@ -1583,8 +1604,9 @@ function promoText(){
 
   L.push("");
   L.push(`━━━━━━━━━━━━━━`);
-  L.push(`✅ الرسوم شاملة داخل السعر`);
-  L.push(`✅ لا يوجد أي خصم عند الاستلام`);
+  const perks = (S.ui.perks === undefined ? DEFAULT_PERKS.join("\n") : S.ui.perks)
+    .split("\n").map(x=>x.trim()).filter(Boolean);
+  for(const x of perks) L.push(`✅ ${x}`);
   L.push(`⏱ الأسعار سارية ليوم ${p(d.getDate())}/${p(d.getMonth()+1)}`);
   const c = (S.ui.promo || "").trim();
   if(c){ L.push(""); L.push(`📱 ${c}`); }
@@ -1644,9 +1666,8 @@ function renderLadder(){
         <td class="n">${money(r.amt, send)}</td>
         <td class="big">${money(r.out, payout)}</td>
         <td class="n">${fmtRate(r.rate)}</td>
-        <td class="n op-only" style="color:var(--money)">${fmt(r.eur,2)} €</td>
       </tr>`).join("")
-    : `<tr><td colspan="4"><p class="empty">لا يمكن بناء الجدول بالأسعار الحالية</p></td></tr>`;
+    : `<tr><td colspan="3"><p class="empty">لا يمكن بناء الجدول بالأسعار الحالية</p></td></tr>`;
 }
 
 /* ============================================================
@@ -1837,14 +1858,15 @@ function bind(){
 
   const touch = ()=>{ save(); renderBoard(); renderLock(); renderQuote(); renderTiers(); renderLadder(); renderPromo(); };
 
-  /* direction switch */
+  /* the two questions this tool exists to answer */
   function setDir(d){
     S.ui.dir = d;
     $("dir-fwd").setAttribute("aria-pressed", d === "fwd");
     $("dir-rev").setAttribute("aria-pressed", d === "rev");
-    $("q-amount-lbl").textContent = d === "fwd"
-      ? "المبلغ الذي يدفعه العميل"
-      : "المبلغ الذي يجب أن يستلمه المستفيد";
+    const rev = d === "rev";
+    $("q-amount-lbl").textContent = rev ? "المبلغ المطلوب وصوله" : "المبلغ الذي معه";
+    $("q-send-lbl").textContent   = rev ? "يدفع بعملة" : "عملة الإرسال";
+    $("q-payout-lbl").textContent = rev ? "المبلغ أعلاه بعملة" : "عملة التسليم";
     touch();
   }
   $("dir-fwd").onclick = ()=>setDir("fwd");
@@ -1969,18 +1991,31 @@ function bind(){
 
   $("btn-refresh").onclick = fetchRates;
 
-  /* client mode: same engine, margin-bearing UI removed from the DOM view */
-  function setMode(m){
-    S.ui.mode = m;
-    document.querySelector(".wrap").setAttribute("data-mode", m);
-    $("mode-office").setAttribute("aria-pressed", m === "office");
-    $("mode-client").setAttribute("aria-pressed", m === "client");
-    if(m === "client" && S.ui.dir !== "fwd") setDir("fwd");
-    save(); renderQuote(); renderLadder();
+  /* tabs: the calculator you use, the message you send, the desk behind them */
+  function setTab(t){
+    S.ui.tab = t;
+    document.querySelectorAll(".tabs button").forEach(b=>
+      b.setAttribute("aria-selected", b.dataset.tab === t));
+    document.querySelectorAll(".panel").forEach(p=>
+      p.hidden = p.dataset.panel !== t);
+    save();
+    if(t === "promo") renderPromo();
   }
-  $("mode-office").onclick = ()=>setMode("office");
-  $("mode-client").onclick = ()=>setMode("client");
-  setMode(S.ui.mode || "office");
+  document.querySelectorAll(".tabs button").forEach(b=>
+    b.onclick = ()=>setTab(b.dataset.tab));
+  setTab(S.ui.tab || "calc");
+
+  /* promo: perks and which currencies to advertise */
+  $("promo-perks").value = S.ui.perks === undefined ? DEFAULT_PERKS.join("\n") : S.ui.perks;
+  $("promo-perks").oninput = e=>{ S.ui.perks = e.target.value; save(); renderPromo(); };
+
+  $("promo-ccys").innerHTML = PROMO_SENDERS.map(c=>
+    `<label><input type="checkbox" value="${c}"${(S.ui.promoCcys||[]).includes(c)?" checked":""}> ${CCY[c].ar}</label>`
+  ).join("");
+  $("promo-ccys").addEventListener("change", ()=>{
+    S.ui.promoCcys = [...$("promo-ccys").querySelectorAll("input:checked")].map(i=>i.value);
+    save(); renderPromo();
+  });
 
   $("btn-ladder-copy").onclick = async ()=>{
     const rows = ladderRows();
