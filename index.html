@@ -1116,6 +1116,21 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; color:var(--te
             <input class="input num" type="number" id="s-fixedcost" value="0" min="0" step="any" inputmode="decimal">
           </div>
         </div>
+
+        <div class="row-eq">
+          <div class="field">
+            <label for="s-broker-on">سعر الوسيط</label>
+            <select class="input" id="s-broker-on">
+              <option value="1">سعره الخاص (تعادل 1:1)</option>
+              <option value="0">سعر السوق</option>
+            </select>
+          </div>
+          <div class="field" id="broker-wrap">
+            <label for="s-broker">يورو يخرج مقابل كل دولار يصل</label>
+            <input class="input num" type="number" id="s-broker" value="1" min="0.01" step="any" inputmode="decimal">
+          </div>
+        </div>
+        <div id="broker-note"></div>
         <details class="fold">
           <summary>تعديل الأسعار يدويًا (سعر الصرّاف في اليمن)</summary>
           <div>
@@ -1279,6 +1294,7 @@ const S = {
   ovrAt: {},                    // ccy -> when that rate was entered
   methods: structuredClone(DEFAULT_METHODS),
   cfg: { minFeeUsd:5, payoutFeePct:0.5, fixedCostUsd:0 },
+  broker: { on:true, eurPerUsd:1.0 },   // correspondent: euros out per dollar delivered
   ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5, method:"bank", tab:"calc", basis:"live", promo:"", promoCcys:["GBP","EUR","USD"] },
   log: [],
   theme: null
@@ -1287,7 +1303,7 @@ const S = {
 function save(){
   try{
     localStorage.setItem(LS, JSON.stringify({
-      overrides:S.overrides, methods:S.methods, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme, locked:S.locked, yerCity:S.yerCity, ovrAt:S.ovrAt
+      overrides:S.overrides, methods:S.methods, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme, locked:S.locked, yerCity:S.yerCity, ovrAt:S.ovrAt, broker:S.broker
     }));
   }catch(e){ /* private mode — run without persistence */ }
 }
@@ -1306,6 +1322,7 @@ function load(){
       S.methods.bank.tiers = d.tiers;          // carried over from before methods existed
     }
     if(d.cfg) Object.assign(S.cfg, d.cfg);
+    if(d.broker) Object.assign(S.broker, d.broker);
     if(d.ui)  Object.assign(S.ui,  d.ui);
     if(Array.isArray(d.log)) S.log = d.log;
     if(d.theme) S.theme = d.theme;
@@ -1503,6 +1520,17 @@ function toUsd(amount, ccy){ const r = rateOf(ccy); return r ? amount / r : NaN;
 function fromUsd(usd, ccy){ const r = rateOf(ccy); return r ? usd * r : NaN; }
 
 function M(){ return S.methods[S.ui.method] || S.methods.bank; }
+
+/* The correspondent's terms: how many euros must leave the account for one
+   dollar to land. At par that is 1.00 — a euro buys a dollar's delivery —
+   which costs the difference between the two currencies, so it is priced
+   in rather than discovered afterwards. Turn it off and the leg is valued
+   at the market rate, which is right only if the correspondent charges it. */
+function brokerRate(){
+  if(!S.broker || !S.broker.on) return rateOf("EUR");
+  const v = num(S.broker.eurPerUsd);
+  return v > 0 ? v : rateOf("EUR");
+}
 function inCostPct(){ return num(M().inCostPct); }
 
 function tierFor(usd){
@@ -1525,18 +1553,6 @@ function marginOn(usdGross){
   const byPct = usdGross * pct / 100;
   const fee   = Math.max(byPct, num(S.cfg.minFeeUsd));
   return { pct, fee, floored: fee > byPct + 1e-9 };
-}
-
-/* reverse: beneficiary must receive exactly X — solve for the gross.
-   fee depends on gross, so iterate to a fixed point. */
-function grossForNet(usdNet){
-  let g = usdNet * 1.06 + num(S.cfg.minFeeUsd);
-  for(let i=0;i<60;i++){
-    const next = usdNet + marginOn(g).fee;
-    if(Math.abs(next - g) < 1e-10){ g = next; break; }
-    g = next;
-  }
-  return g;
 }
 
 function num(v){ const n = parseFloat(v); return isFinite(n) ? n : 0; }
@@ -1577,6 +1593,53 @@ function blockingCcys(){
     .filter(c => CCY[c] && !tierOf(c).ok && S.overrides[c] === undefined);
 }
 
+/* One forward pass of the whole chain: client's money valued at market,
+   bank cut, our margin, then the correspondent's rate turning the euros
+   that leave into the dollars that land. The quote, the ladder, the promo
+   message and the drift check all go through here, so a change to the
+   correspondent's terms cannot reach one of them and miss the others.
+   `rates` is passed in because drift compares today's board with the
+   locked one, and each has to be priced on its own table. */
+function deliverFrom(usdGross, rates){
+  const eurPerUsdMkt = rates.EUR;
+  const brokerEur = (S.broker && S.broker.on && num(S.broker.eurPerUsd) > 0)
+    ? num(S.broker.eurPerUsd) : eurPerUsdMkt;
+  const inCost = inCostPct() / 100;
+
+  const m           = marginOn(usdGross);
+  const eurIn       = usdGross * eurPerUsdMkt;
+  const eurReceived = eurIn * (1 - inCost);
+  const costsEur    = (usdGross * num(S.cfg.payoutFeePct) / 100 + num(S.cfg.fixedCostUsd)) * eurPerUsdMkt;
+  const eurToSend   = eurReceived - m.fee * eurPerUsdMkt - costsEur;
+
+  return {
+    m, brokerEur, eurPerUsdMkt, eurIn, eurReceived, costsEur, eurToSend,
+    bankLoss: eurIn * inCost,
+    usdDelivered: eurToSend / brokerEur,
+    netProfitEur: eurReceived - eurToSend - costsEur
+  };
+}
+
+/* Invert it: the beneficiary must receive exactly this much, so walk the
+   gross to the fixed point where the chain delivers it. */
+function grossForDelivered(usdWanted, rates){
+  const eurPerUsdMkt = rates.EUR;
+  const brokerEur = (S.broker && S.broker.on && num(S.broker.eurPerUsd) > 0)
+    ? num(S.broker.eurPerUsd) : eurPerUsdMkt;
+  const inCost = inCostPct() / 100;
+  const eurToSend = usdWanted * brokerEur;
+
+  let g = eurToSend / eurPerUsdMkt / (1 - inCost) * 1.06 + num(S.cfg.minFeeUsd);
+  for(let i = 0; i < 80; i++){
+    const costsEur = (g * num(S.cfg.payoutFeePct) / 100 + num(S.cfg.fixedCostUsd)) * eurPerUsdMkt;
+    const need = eurToSend + marginOn(g).fee * eurPerUsdMkt + costsEur;
+    const next = need / (1 - inCost) / eurPerUsdMkt;
+    if(Math.abs(next - g) < 1e-10){ g = next; break; }
+    g = next;
+  }
+  return g;
+}
+
 function compute(){
   const { dir, send, payout } = S.ui;
   const amount = num(S.ui.amount);
@@ -1588,50 +1651,57 @@ function compute(){
     return { error:"input" };
   }
 
-  let usdGross, usdNet, sendAmount, payoutAmount, m;
+  /* The delivery leg does not run at market. Money leaves the EUR account
+     and reaches the beneficiary through a correspondent who states his own
+     terms — ours counts one euro sent as one dollar delivered, fees and
+     all. Pricing the leg at the mid-market rate quotes a transfer nobody
+     can actually execute, so the correspondent's rate is what converts
+     euros into delivered dollars, and the market rate is kept only to show
+     what that costs. */
+  const RT = R();
+  let sendAmount, payoutAmount, usdGross, d;
 
   if(dir === "fwd"){
     sendAmount = amount;
     usdGross   = toUsd(sendAmount, send);
-    m          = marginOn(usdGross);
-    usdNet     = usdGross - m.fee;
-    payoutAmount = fromUsd(usdNet, payout);
+    d          = deliverFrom(usdGross, RT);
+    payoutAmount = d.usdDelivered * rateOf(payout);
   }else{
     payoutAmount = amount;
-    usdNet   = toUsd(payoutAmount, payout);
-    usdGross = grossForNet(usdNet);
-    m        = marginOn(usdGross);
+    usdGross   = grossForDelivered(toUsd(payoutAmount, payout), RT);
+    d          = deliverFrom(usdGross, RT);
     sendAmount = fromUsd(usdGross, send);
   }
 
-  /* the minimum fee can swallow a very small transfer entirely —
-     say so plainly instead of falling through to a generic error */
-  if(usdNet <= 0){
-    return { error:"tooSmall", minSend: fromUsd(grossForNet(0.01), send), send };
+  /* the minimum fee, or the correspondent's premium, can swallow a small
+     transfer entirely — say so plainly instead of a generic error */
+  if(!(d.usdDelivered > 0) || !(d.eurToSend > 0)){
+    return { error:"tooSmall", minSend: minSendFor(send), send };
   }
 
-  /* our side of the counter, all in EUR */
-  const eurMid      = fromUsd(usdGross, "EUR");                       // mid-market value of client's money
-  const bankLoss    = eurMid * inCostPct() / 100;   // bank cut on a transfer; zero on cash in hand
-  const eurReceived = eurMid - bankLoss;
-  const eurPayout   = fromUsd(usdNet, "EUR");                          // what we owe the beneficiary
-  const partnerCost = fromUsd(usdGross * num(S.cfg.payoutFeePct)/100 + num(S.cfg.fixedCostUsd), "EUR");
-
-  const grossProfitEur = fromUsd(m.fee, "EUR");
-  const netProfitEur   = eurReceived - eurPayout - partnerCost;
-  const netProfitUsd   = toUsd(netProfitEur, "EUR");
-  const netPct         = usdGross > 0 ? (netProfitUsd / usdGross) * 100 : 0;
-
-  const effRate = sendAmount > 0 ? payoutAmount / sendAmount : NaN;
-  const midRate = rateOf(payout) / rateOf(send);
+  const m = d.m;
+  const brokerPremiumPct = (d.brokerEur / d.eurPerUsdMkt - 1) * 100;
+  const brokerCostEur    = d.usdDelivered * (d.brokerEur - d.eurPerUsdMkt);
+  const netProfitUsd     = toUsd(d.netProfitEur, "EUR");
 
   return {
     send, payout, sendAmount, payoutAmount,
-    usdGross, usdNet, fee:m.fee, pct:m.pct, floored:m.floored,
-    eurMid, bankLoss, eurReceived, eurPayout, partnerCost,
-    grossProfitEur, netProfitEur, netProfitUsd, netPct,
-    effRate, midRate
+    usdGross, usdNet: d.usdDelivered, usdDelivered: d.usdDelivered,
+    fee:m.fee, pct:m.pct, floored:m.floored,
+    eurMid: d.eurIn, bankLoss: d.bankLoss, eurReceived: d.eurReceived,
+    eurToSend: d.eurToSend, eurPayout: d.eurToSend, partnerCost: d.costsEur,
+    brokerEurPerUsd: d.brokerEur, brokerPremiumPct, brokerCostEur,
+    grossProfitEur: m.fee * d.eurPerUsdMkt,
+    netProfitEur: d.netProfitEur, netProfitUsd,
+    netPct: usdGross > 0 ? (netProfitUsd / usdGross) * 100 : 0,
+    effRate: sendAmount > 0 ? payoutAmount / sendAmount : NaN,
+    midRate: rateOf(payout) / rateOf(send)
   };
+}
+
+/* smallest send that still leaves something for the beneficiary */
+function minSendFor(send){
+  return fromUsd(grossForDelivered(0.01, R()), send);
 }
 
 /* ============================================================
@@ -1763,7 +1833,9 @@ function renderQuote(){
       `<span class="num">${fmtRate(q.effRate)}</span> / <span class="num">${fmtRate(q.midRate)}</span>`) +
     L("يدخل حسابك", `<span class="num">${money(q.eurReceived,"EUR")}</span>`) +
     L(`تكلفة الاستلام ${fmt(inCostPct(),2)}٪ (${M().short})`, `<span class="num neg">−${money(q.bankLoss,"EUR")}</span>`) +
-    L("تدفعه للمستفيد", `<span class="num neg">−${money(q.eurPayout,"EUR")}</span>`) +
+    L(`ترسله للوسيط ${S.broker.on ? `<span class="chip warn">1 USD = ${fmt(q.brokerEurPerUsd,4)} EUR</span>` : ""}`,
+      `<span class="num neg">−${money(q.eurToSend,"EUR")}</span>`) +
+    L("يصل المستفيد بالدولار", `<span class="num">${money(q.usdDelivered,"USD")}</span>`) +
     L("تكلفة الصرّاف", `<span class="num neg">−${money(q.partnerCost,"EUR")}</span>`) +
     L("الربح الصافي", `<span class="num">${money(q.netProfitEur,"EUR")}</span>`, "sum") +
     L("أي ما يعادل", `<span class="num">${money(q.netProfitUsd,"USD")}</span> · <span class="num">${fmt(q.netPct,2)}٪</span>`);
@@ -1847,22 +1919,24 @@ function driftFor(send, payout, sendAmount){
   let amt = num(sendAmount);
   if(!(amt > 0)) amt = 1000 / L[send];
 
-  const gLock  = amt / L[send];
-  const mLock  = marginOn(gLock);
-  const promised = (gLock - mLock.fee) * L[payout];
+  const gLock    = amt / L[send];
+  const dLock    = deliverFrom(gLock, L);
+  const promised = dLock.usdDelivered * L[payout];
   if(promised <= 0) return null;              // below the minimum — nothing to promise
 
-  const usdNow    = amt / V[send];
-  const usdNeeded = promised / V[payout];
-  const marginNow = usdNow > 0 ? (usdNow - usdNeeded) / usdNow * 100 : 0;
-  const marginLock= gLock  > 0 ? mLock.fee / gLock * 100 : 0;
+  /* honour the promise at today's board: what gross does it take now, and
+     what is left over once the correspondent has been paid */
+  const gNow  = amt / V[send];
+  const dNow  = deliverFrom(gNow, V);
+  const owedUsd = promised / V[payout];
+  const shortEur = (owedUsd - dNow.usdDelivered) * dNow.brokerEur;
 
-  const costs = inCostPct() + num(S.cfg.payoutFeePct);
+  const netLock = gLock > 0 ? dLock.netProfitEur / dLock.eurPerUsdMkt / gLock * 100 : 0;
+  const netNow  = gNow  > 0 ? (dNow.netProfitEur - shortEur) / dNow.eurPerUsdMkt / gNow * 100 : 0;
+
   return {
     send, payout, lockPair, livePair, diffPct,
-    netLock: marginLock - costs,
-    netNow:  marginNow  - costs,
-    delta:   marginNow - marginLock
+    netLock, netNow, delta: netNow - netLock
   };
 }
 
@@ -1974,9 +2048,9 @@ function promoText(){
       const amt = nice(usd * basis[c]);
       if(!amt) continue;
       const g = amt / basis[c];
-      const m = marginOn(g);
-      if(g - m.fee <= 0) continue;
-      rates.push(((g - m.fee) * basis[payout]) / amt);
+      const d = deliverFrom(g, basis);
+      if(!(d.usdDelivered > 0)) continue;
+      rates.push((d.usdDelivered * basis[payout]) / amt);
     }
     if(!rates.length) continue;
     const lo = Math.min(...rates), hi = Math.max(...rates);
@@ -2036,14 +2110,10 @@ function ladderRows(){
     if(!amt || seen.has(amt)) continue;
     seen.add(amt);
     const g = toUsd(amt, send);
-    const m = marginOn(g);
-    const net = g - m.fee;
-    if(net <= 0) continue;
-    const out = fromUsd(net, payout);
-    const eur = fromUsd(g,"EUR")*(1-inCostPct()/100)
-              - fromUsd(net,"EUR")
-              - fromUsd(g*num(S.cfg.payoutFeePct)/100 + num(S.cfg.fixedCostUsd),"EUR");
-    rows.push({amt, out, rate: out/amt, eur, pct:m.pct});
+    const d = deliverFrom(g, R());
+    if(!(d.usdDelivered > 0)) continue;
+    const out = d.usdDelivered * rateOf(payout);
+    rows.push({amt, out, rate: out/amt, eur: d.netProfitEur, pct: d.m.pct});
   }
   return rows;
 }
@@ -2176,7 +2246,29 @@ function renderLog(){
   </tr>`;
 }
 
+/* The correspondent's premium is the largest single cost on the transfer
+   and the easiest to leave unnoticed, because it hides inside a rate
+   rather than appearing as a fee. State it as a percentage, next to the
+   margin it has to be covered by. */
+function renderBrokerNote(){
+  const el = document.getElementById("broker-note");
+  if(!el) return;
+  const mkt = rateOf("EUR");
+  if(!S.broker.on || !mkt){ el.innerHTML = ""; return; }
+
+  const prem = (brokerRate() / mkt - 1) * 100;
+  const need = M().tiers.length ? tierFor(1000).pct : 0;
+  const cls  = prem > need ? "alarm" : "";
+  el.innerHTML = `<div class="callout ${cls}"><span class="mark">${prem > need ? "▲" : "◆"}</span>
+    <span>سعر السوق الآن <span class="num">${fmt(mkt,4)}</span> يورو للدولار، ووسيطك يأخذ
+    <span class="num">${fmt(brokerRate(),4)}</span> — أي <strong>${fmt(prem,2)}٪</strong> فوق السوق.
+    ${prem > need
+      ? `نسبتك المعلنة <strong>${fmt(need,1)}٪</strong> <strong>لا تغطيها</strong> — ارفعها فوق ${fmt(prem + 2,0)}٪ أو تكون كل حوالة خاسرة.`
+      : `نسبتك <strong>${fmt(need,1)}٪</strong> تغطيها وتزيد.`}</span></div>`;
+}
+
 function renderAll(){
+  renderBrokerNote();
   renderBoard();
   renderLock();
   renderMethodNote();
@@ -2416,6 +2508,10 @@ function bind(){
   $("s-payoutfee").value = S.cfg.payoutFeePct;
   $("s-fixedcost").value = S.cfg.fixedCostUsd;
 
+  $("s-broker-on").value = S.broker.on ? "1" : "0";
+  $("s-broker").value    = S.broker.eurPerUsd;
+  $("broker-wrap").hidden = !S.broker.on;
+
   const touch = ()=>{ save(); renderBoard(); renderLock(); renderQuote(); renderTiers(); renderLadder(); renderPromo(); renderMethodNote(); };
 
   /* the two questions this tool exists to answer */
@@ -2519,6 +2615,16 @@ function bind(){
   /* Yemen: picking a city writes its rate into the manual override, which
      is what unblocks a YER quote — the city is the price, so it has to be
      an explicit act rather than a default that quietly picks one */
+  $("s-broker-on").addEventListener("change", e=>{
+    S.broker.on = e.target.value === "1";
+    $("broker-wrap").hidden = !S.broker.on;
+    save(); renderAll();
+  });
+  $("s-broker").addEventListener("input", e=>{
+    const v = parseFloat(e.target.value);
+    if(isFinite(v) && v > 0){ S.broker.eurPerUsd = v; save(); renderAll(); }
+  });
+
   $("btn-yer").onclick = fetchYer;
   $("btn-dzd").onclick = fetchDzd;
   $("dzd-body").addEventListener("click", e=>{
