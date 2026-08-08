@@ -37,8 +37,11 @@ async function get(url){
    list, rotating which ones on every request; the dollar turns up in
    roughly a third of them. The figures themselves are steady, so it is the
    sampling that has to be worked around, not the data. A handful of
-   requests go out together and the first one carrying the dollar wins. */
-const DP_TRIES = 4;
+   requests go out together and the first one carrying the dollar wins.
+   Four tries left roughly one call in seven with no dollar at all; six
+   brings that under one in twenty, and the edge cache means a handful of
+   requests every fifteen minutes rather than per visitor. */
+const DP_TRIES = 6;
 
 function readDinarplus(body){
   const t = txt(body);
