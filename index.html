@@ -977,6 +977,21 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; color:var(--te
       <div class="board-row" id="board-row"></div>
     </section>
 
+    <div id="rate-warn"></div>
+
+    <div class="card" id="yer-card">
+      <div class="card-head">
+        <h2>سعر الريال اليمني — عدن وصنعاء</h2>
+        <span class="hint">من سوق الصرافة، لا من الأسعار العالمية</span>
+      </div>
+      <div class="card-body">
+        <div id="yer-body"><p class="empty">اضغط «تحديث أسعار اليمن»</p></div>
+        <div class="toolbar" style="margin-top:12px">
+          <button class="btn btn-sm" id="btn-yer">تحديث أسعار اليمن</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-head">
         <h2>ربح العملية الحالية</h2>
@@ -1141,43 +1156,77 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; color:var(--te
 
 /* ============================================================
    CURRENCIES + OFFLINE SNAPSHOT (units per 1 USD)
-   Captured 2026-08-04 — used until a live fetch succeeds.
+   Captured 2026-08-08 — used until a live fetch succeeds.
+
+   Every currency carries a `tier`, which says how much the global
+   mid-market rate can be trusted for it. This is not decoration: the
+   quote is refused outright for `dual` currencies until a real local
+   rate is typed in, because for those the worldwide number is not a
+   slightly-off version of the truth — it is a different market the
+   beneficiary cannot reach.
+
+     peg   مربوطة رسميًا      — exact by decree, use as-is
+     deep  عائمة وسوقها عميقة — one real global price, sources agree <0.2%
+     thin  سوق ضحلة           — one price, but sources drift ~0.5-1%
+     dual  مزدوجة السعر       — the global number is meaningless locally
    ============================================================ */
 const CCY = {
-  USD:{ar:"دولار أمريكي",  sym:"$",   dp:2},
-  EUR:{ar:"يورو",          sym:"€",   dp:2},
-  GBP:{ar:"جنيه إسترليني", sym:"£",   dp:2},
-  SAR:{ar:"ريال سعودي",    sym:"ر.س", dp:2},
-  AED:{ar:"درهم إماراتي",  sym:"د.إ", dp:2},
-  OMR:{ar:"ريال عماني",    sym:"ر.ع", dp:3},
-  QAR:{ar:"ريال قطري",     sym:"ر.ق", dp:2},
-  KWD:{ar:"دينار كويتي",   sym:"د.ك", dp:3},
-  JOD:{ar:"دينار أردني",   sym:"د.أ", dp:3},
-  YER:{ar:"ريال يمني",     sym:"ر.ي", dp:0},
-  TRY:{ar:"ليرة تركية",    sym:"₺",   dp:2},
-  EGP:{ar:"جنيه مصري",     sym:"ج.م", dp:2},
-  MYR:{ar:"رينغيت ماليزي", sym:"RM",  dp:2},
-  CAD:{ar:"دولار كندي",    sym:"C$",  dp:2},
-  AUD:{ar:"دولار أسترالي", sym:"A$",  dp:2},
-  CHF:{ar:"فرنك سويسري",   sym:"Fr",  dp:2},
-  SEK:{ar:"كرونة سويدية",  sym:"kr",  dp:2},
-  NOK:{ar:"كرونة نرويجية", sym:"kr",  dp:2},
-  DKK:{ar:"كرونة دنماركية",sym:"kr",  dp:2},
-  DJF:{ar:"فرنك جيبوتي",   sym:"Fdj", dp:0},
-  JPY:{ar:"ين ياباني",     sym:"¥",   dp:0},
-  CNY:{ar:"يوان صيني",     sym:"¥",   dp:2},
-  INR:{ar:"روبية هندية",   sym:"₹",   dp:2}
+  USD:{ar:"دولار أمريكي",  sym:"$",   dp:2, tier:"peg"},
+  EUR:{ar:"يورو",          sym:"€",   dp:2, tier:"deep"},
+  GBP:{ar:"جنيه إسترليني", sym:"£",   dp:2, tier:"deep"},
+  SAR:{ar:"ريال سعودي",    sym:"ر.س", dp:2, tier:"peg"},
+  AED:{ar:"درهم إماراتي",  sym:"د.إ", dp:2, tier:"peg"},
+  OMR:{ar:"ريال عماني",    sym:"ر.ع", dp:3, tier:"peg"},
+  QAR:{ar:"ريال قطري",     sym:"ر.ق", dp:2, tier:"peg"},
+  KWD:{ar:"دينار كويتي",   sym:"د.ك", dp:3, tier:"peg"},
+  BHD:{ar:"دينار بحريني",  sym:"د.ب", dp:3, tier:"peg"},
+  JOD:{ar:"دينار أردني",   sym:"د.أ", dp:3, tier:"peg"},
+  DJF:{ar:"فرنك جيبوتي",   sym:"Fdj", dp:0, tier:"peg"},
+  TRY:{ar:"ليرة تركية",    sym:"₺",   dp:2, tier:"deep"},
+  EGP:{ar:"جنيه مصري",     sym:"ج.م", dp:2, tier:"deep"},
+  MYR:{ar:"رينغيت ماليزي", sym:"RM",  dp:2, tier:"deep"},
+  CAD:{ar:"دولار كندي",    sym:"C$",  dp:2, tier:"deep"},
+  AUD:{ar:"دولار أسترالي", sym:"A$",  dp:2, tier:"deep"},
+  CHF:{ar:"فرنك سويسري",   sym:"Fr",  dp:2, tier:"deep"},
+  SEK:{ar:"كرونة سويدية",  sym:"kr",  dp:2, tier:"deep"},
+  NOK:{ar:"كرونة نرويجية", sym:"kr",  dp:2, tier:"deep"},
+  DKK:{ar:"كرونة دنماركية",sym:"kr",  dp:2, tier:"deep"},
+  JPY:{ar:"ين ياباني",     sym:"¥",   dp:0, tier:"deep"},
+  CNY:{ar:"يوان صيني",     sym:"¥",   dp:2, tier:"deep"},
+  INR:{ar:"روبية هندية",   sym:"₹",   dp:2, tier:"deep"},
+  MAD:{ar:"درهم مغربي",    sym:"د.م", dp:2, tier:"thin"},
+  TND:{ar:"دينار تونسي",   sym:"د.ت", dp:3, tier:"thin"},
+  YER:{ar:"ريال يمني",     sym:"ر.ي", dp:0, tier:"dual",
+       note:"سعران منفصلان — عدن وصنعاء، والفرق بينهما نحو ٣ أضعاف"},
+  DZD:{ar:"دينار جزائري",  sym:"د.ج", dp:0, tier:"dual",
+       note:"السعر العالمي رسمي فقط — السوق الموازية أعلى بنحو ٨٠٪"},
+  LYD:{ar:"دينار ليبي",    sym:"د.ل", dp:2, tier:"dual",
+       note:"السوق الموازية أعلى من الرسمي بنحو ١٥٪"},
+  SDG:{ar:"جنيه سوداني",   sym:"ج.س", dp:0, tier:"dual",
+       note:"السوق الموازية أعلى من الرسمي بأضعاف"}
 };
 
-const SNAPSHOT = {
-  USD:1, EUR:0.867992, GBP:0.74337, SAR:3.755321,
-  AED:3.6733, OMR:0.3851, QAR:3.641001, KWD:0.30953,
-  JOD:0.71, YER:238.390025, TRY:47.545708, EGP:50.18061,
-  MYR:4.0958, CAD:1.4075, AUD:1.4208, CHF:0.80978,
-  SEK:9.532321, NOK:9.549851, DKK:6.488391, DJF:177.721,
-  JPY:157.463017, CNY:6.758401, INR:95.06481
+const TIERS = {
+  peg:  {ar:"مربوطة",   cls:"good", ok:true },
+  deep: {ar:"سوق عميقة", cls:"good", ok:true },
+  thin: {ar:"سوق ضحلة",  cls:"warn", ok:true },
+  dual: {ar:"سعر مزدوج", cls:"crit", ok:false}
 };
-const SNAPSHOT_STAMP = "2026-08-04";
+const tierOf = c => TIERS[(CCY[c] && CCY[c].tier) || "deep"];
+
+const SNAPSHOT = {
+  USD:1, EUR:0.865413, GBP:0.74163, SAR:3.7524, AED:3.67295,
+  OMR:0.384799, QAR:3.6405, KWD:0.308754, BHD:0.376,
+  JOD:0.7095, YER:237.528554, TRY:47.704613, EGP:49.791781,
+  MYR:4.090917, CAD:1.394554, AUD:1.416136, CHF:0.808228,
+  SEK:9.47587, NOK:9.506569, DKK:6.465069, DJF:177.721,
+  JPY:157.819585, CNY:6.755538, INR:95.232561, DZD:133.119432,
+  MAD:9.302251, TND:2.913061, LYD:6.363525, SDG:601.5
+};
+const SNAPSHOT_STAMP = "2026-08-08";
+/* the snapshot is a floor, not a price: past this many days it is stale
+   enough that quoting from it silently is the dangerous choice */
+const SNAPSHOT_STALE_DAYS = 3;
 
 /* Two ways the client hands over the money. They price differently and,
    just as importantly, they cost differently: a bank transfer is converted
@@ -1203,6 +1252,10 @@ const S = {
   rateSource: "saved",          // saved | live | manual
   rateStamp: SNAPSHOT_STAMP,
   liveAt: null,                 // epoch ms of the live quote itself
+  sourceCount: 0,               // how many feeds agreed on this refresh
+  diverged: [],                 // [{c, gap}] — feeds that disagree materially
+  yer: null,                    // {aden, sanaa, fetchedAt} from /api/yer
+  yerCity: null,                // which city the YER override was taken from
   locked: null,                 // {rates, at} — the day's published prices
   overrides: {},                // ccy -> rate typed by hand
   methods: structuredClone(DEFAULT_METHODS),
@@ -1215,7 +1268,7 @@ const S = {
 function save(){
   try{
     localStorage.setItem(LS, JSON.stringify({
-      overrides:S.overrides, methods:S.methods, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme, locked:S.locked
+      overrides:S.overrides, methods:S.methods, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme, locked:S.locked, yerCity:S.yerCity
     }));
   }catch(e){ /* private mode — run without persistence */ }
 }
@@ -1237,6 +1290,7 @@ function load(){
     if(Array.isArray(d.log)) S.log = d.log;
     if(d.theme) S.theme = d.theme;
     if(d.locked && d.locked.rates) S.locked = d.locked;
+    if(d.yerCity) S.yerCity = d.yerCity;
   }catch(e){ /* corrupt store — fall back to defaults */ }
 }
 
@@ -1467,9 +1521,22 @@ function grossForNet(usdNet){
 
 function num(v){ const n = parseFloat(v); return isFinite(n) ? n : 0; }
 
+/* A dual-rate currency has no usable global price. Quoting one from the
+   feed is not "roughly right" — for the Yemeni rial the feed is out by a
+   factor of six. So the quote is refused until a local rate is typed in,
+   and the refusal names the currency instead of showing a plausible lie. */
+function blockingCcys(){
+  return [S.ui.send, S.ui.payout]
+    .filter((c,i,a) => a.indexOf(c) === i)
+    .filter(c => CCY[c] && !tierOf(c).ok && S.overrides[c] === undefined);
+}
+
 function compute(){
   const { dir, send, payout } = S.ui;
   const amount = num(S.ui.amount);
+
+  const blocked = blockingCcys();
+  if(blocked.length) return { error:"needsManual", blocked };
 
   if(!rateOf(send) || !rateOf(payout) || !rateOf("EUR") || !(amount > 0)){
     return { error:"input" };
@@ -1541,14 +1608,36 @@ function renderBoard(){
   if(hasOvr){
     pip.className = "pip manual";
     pip.textContent = "تعديل يدوي (" + Object.keys(S.overrides).length + ")";
-  }else if(S.rateSource === "live"){
+  }else if(S.rateSource === "live" && S.sourceCount > 1){
     pip.className = "pip live";
-    pip.textContent = "مباشر";
-  }else{
+    pip.textContent = "مباشر · متقاطع";
+  }else if(S.rateSource === "live"){
+    /* one feed answering is not corroboration — say so rather than
+       showing the same confident green as two agreeing sources */
     pip.className = "pip saved";
-    pip.textContent = "أسعار محفوظة";
+    pip.textContent = "مباشر · مصدر واحد";
+  }else{
+    const age = snapshotAgeDays();
+    pip.className = "pip saved";
+    pip.textContent = age > 0 ? `أسعار محفوظة · عمرها ${age} يوم` : "أسعار محفوظة";
   }
   stamp.textContent = S.rateStamp;
+
+  /* the saved snapshot drifts about 1% a week — past a few days, quoting
+     from it without a word is worse than refusing to look live */
+  const warn = document.getElementById("rate-warn");
+  if(warn){
+    const bits = [];
+    if(S.rateSource === "saved" && snapshotAgeDays() > SNAPSHOT_STALE_DAYS){
+      bits.push(`الأسعار المحفوظة عمرها <strong>${snapshotAgeDays()} يومًا</strong> — قد تنحرف نحو ١٪ أسبوعيًا. حدّث أو عدّل يدويًا قبل أي مبلغ كبير.`);
+    }
+    if(S.diverged && S.diverged.length){
+      bits.push("المصادر غير متفقة على: " +
+        S.diverged.map(d => `<strong>${d.c}</strong> (${fmt(d.gap,2)}٪)`).join("، ") +
+        " — راجع سعر الصرّاف قبل اعتمادها.");
+    }
+    warn.innerHTML = bits.map(b => `<div class="callout alarm"><span class="mark">▲</span><span>${b}</span></div>`).join("");
+  }
 
   document.getElementById("board-row").innerHTML = BOARD_PAIRS.map(p=>{
     const a = rateOf(p.from), b = rateOf(p.to);
@@ -1574,10 +1663,19 @@ function renderQuote(){
 
   if(!q || q.error){
     outPayout.textContent = "—";
-    outRate.textContent = (q && q.error === "tooSmall")
-      ? `المبلغ أقل من الحد الأدنى — لا يقل عن ${money(q.minSend, q.send)} تقريبًا`
-      : "أدخل مبلغًا صالحًا";
-    lines.innerHTML = "";
+    if(q && q.error === "needsManual"){
+      const names = q.blocked.map(c => CCY[c].ar).join(" و");
+      outRate.innerHTML = `<strong>${names}</strong> — أدخل سعر السوق المحلي قبل التسعير`;
+      lines.innerHTML = q.blocked.map(c => `<div class="callout alarm"><span class="mark">▲</span>
+        <span><strong>${CCY[c].ar} (${c})</strong> — ${CCY[c].note || "السعر العالمي لا يمثل السوق المحلية"}.
+        السعر العالمي الآن <span class="num">${fmtRate(S.rates[c])}</span> للدولار، وهو
+        <strong>ليس</strong> ما يستلمه المستفيد. اكتب السعر الحقيقي في «المكتب ← تعديل الأسعار يدويًا».</span></div>`).join("");
+    }else{
+      outRate.textContent = (q && q.error === "tooSmall")
+        ? `المبلغ أقل من الحد الأدنى — لا يقل عن ${money(q.minSend, q.send)} تقريبًا`
+        : "أدخل مبلغًا صالحًا";
+      lines.innerHTML = "";
+    }
     books.innerHTML = `<p class="empty">في انتظار عملية صالحة</p>`;
     document.getElementById("out-label").textContent = S.ui.dir === "rev" ? "يدفع العميل" : "يستلم المستفيد";
     flag.innerHTML = "";
@@ -1961,11 +2059,17 @@ function renderOverrides(){
     .map(c=>{
       const ovr  = S.overrides[c];
       const base = S.rates[c];
+      const t    = tierOf(c);
+      /* a dual-rate currency with no manual figure is the dangerous case:
+         it must read as blocked, not as a live price waiting to be used */
       const src  = ovr !== undefined
-        ? `<span class="chip warn">يدوي</span>`
-        : `<span class="chip good">${S.rateSource === "live" ? "مباشر" : "محفوظ"}</span>`;
+        ? `<span class="chip warn">يدوي${c === "YER" && S.yerCity ? " · " + S.yerCity : ""}</span>`
+        : !t.ok
+          ? `<span class="chip crit">مطلوب يدويًا</span>`
+          : `<span class="chip good">${S.rateSource === "live" ? "مباشر" : "محفوظ"}</span>`;
       return `<tr>
-        <td>${CCY[c].ar} <span class="num" style="color:var(--muted)">${c}</span></td>
+        <td>${CCY[c].ar} <span class="num" style="color:var(--muted)">${c}</span>
+          <span class="chip ${t.cls}">${t.ar}</span></td>
         <td><input class="input num" type="number" data-ovr="${c}"
               value="${ovr !== undefined ? ovr : ""}"
               placeholder="${base ? fmtRate(base) : "—"}" min="0" step="any"></td>
@@ -2022,12 +2126,20 @@ function renderAll(){
   renderPromo();
   renderTiers();
   renderOverrides();
+  renderYer();
   renderLog();
 }
 
 /* ============================================================
    LIVE RATES
    ============================================================ */
+/* Both feeds are polled together and the midpoint is taken, rather than
+   trusting whichever answers first. Two independent sources agreeing is
+   the only evidence of freshness worth having — a feed can happily serve
+   a stale number with a live-looking timestamp. Where they disagree by
+   more than DIVERGE_PCT the currency is flagged, not silently averaged. */
+const DIVERGE_PCT = 1.0;
+
 async function fetchRates(){
   const pip = document.getElementById("rate-pip");
   pip.className = "pip saved";
@@ -2036,8 +2148,6 @@ async function fetchRates(){
   const ctrl = new AbortController();
   const bail = setTimeout(()=>ctrl.abort(), 8000);
 
-  /* fxratesapi refreshes every 60s and allows browser calls;
-     er-api is the daily-cadence backstop if it is ever unreachable */
   const SOURCES = [
     { name:"fxratesapi",
       url:"https://api.fxratesapi.com/latest?base=USD",
@@ -2049,35 +2159,105 @@ async function fetchRates(){
         ? { rates:d.rates, at: d.time_last_update_unix ? d.time_last_update_unix*1000 : Date.now() } : null }
   ];
 
-  let got = null, used = "";
-  for(const src of SOURCES){
-    try{
-      const res = await fetch(src.url, {cache:"no-store", signal:ctrl.signal});
-      if(!res.ok) continue;
-      const parsed = src.parse(await res.json());
-      if(parsed && typeof parsed.rates.EUR === "number"){ got = parsed; used = src.name; break; }
-    }catch(e){
-      if(e.name === "AbortError") break;   // out of time — stop trying
-    }
-  }
+  const pull = async src => {
+    const res = await fetch(src.url, {cache:"no-store", signal:ctrl.signal});
+    if(!res.ok) throw new Error(src.name + " " + res.status);
+    const parsed = src.parse(await res.json());
+    if(!parsed || typeof parsed.rates.EUR !== "number") throw new Error(src.name + " bad shape");
+    return { ...parsed, name:src.name };
+  };
+
+  const settled = await Promise.allSettled(SOURCES.map(pull));
   clearTimeout(bail);
 
-  if(got){
+  const ok = settled.filter(r => r.status === "fulfilled").map(r => r.value);
+
+  if(ok.length){
+    const diverged = [];
     for(const c of Object.keys(CCY)){
-      if(typeof got.rates[c] === "number") S.rates[c] = got.rates[c];
+      const vals = ok.map(s => s.rates[c]).filter(v => typeof v === "number" && v > 0);
+      if(!vals.length) continue;
+      if(vals.length > 1){
+        const gap = Math.abs(vals[0] / vals[1] - 1) * 100;
+        if(gap > DIVERGE_PCT) diverged.push({ c, gap });
+      }
+      S.rates[c] = vals.reduce((a,b)=>a+b, 0) / vals.length;
     }
     S.rates.USD = 1;
     S.rateSource = "live";
-    S.liveAt = got.at;
-    S.rateStamp = used;
+    S.liveAt = Math.max(...ok.map(s => s.at));
+    S.sourceCount = ok.length;
+    S.diverged = diverged;
+    S.rateStamp = ok.map(s => s.name).join(" + ")
+      + (ok.length > 1 ? " — متقاطعان" : " — مصدر واحد، بلا تقاطع");
   }else{
     /* offline, or served where outbound calls are blocked —
        the saved snapshot stays in effect and manual entry still works */
     S.rateSource = "saved";
     S.liveAt = null;
+    S.sourceCount = 0;
+    S.diverged = [];
     S.rateStamp = SNAPSHOT_STAMP + " — تعذّر الاتصال، استخدم التعديل اليدوي";
   }
   renderAll();
+}
+
+/* ============================================================
+   YEMEN — Aden and Sanaa, from the changers' market
+   ============================================================ */
+async function fetchYer(){
+  const body = document.getElementById("yer-body");
+  body.innerHTML = `<p class="empty">جارٍ السحب…</p>`;
+  try{
+    const res = await fetch("/api/yer", {cache:"no-store", signal:AbortSignal.timeout(15000)});
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    S.yer = await res.json();
+  }catch(e){
+    S.yer = null;
+    /* opened from a file, or hosted without the function — the manual
+       field is still the way through, so point at it plainly */
+    body.innerHTML = `<div class="callout alarm"><span class="mark">▲</span>
+      <span>تعذّر سحب أسعار اليمن (${e.message}). تعمل هذه الميزة على النسخة المنشورة فقط.
+      أدخل السعر يدويًا في الجدول أسفل الصفحة.</span></div>`;
+    return;
+  }
+  renderYer();
+}
+
+function renderYer(){
+  const body = document.getElementById("yer-body");
+  if(!S.yer) return;
+  const y = S.yer;
+
+  const row = (key, ar) => {
+    const c = y[key];
+    if(!c || !c.USD || !c.USD.rate){
+      return `<div class="line"><dt>${ar}</dt><dd class="num">تعذّر</dd></div>`;
+    }
+    const chip = c.USD.sources > 1 && c.USD.gap < 2
+      ? `<span class="chip good">مؤكَّد · مصدران</span>`
+      : `<span class="chip warn">${c.USD.confidence}</span>`;
+    const sar = c.SAR && c.SAR.rate ? ` · <span class="num">1 SAR = ${fmtRate(c.SAR.rate)}</span>` : "";
+    return `<div class="line"><dt>${ar} ${chip}</dt>
+      <dd><span class="num">1 USD = ${fmtRate(c.USD.rate)}</span>${sar}
+      <button class="btn btn-sm" data-yer-use="${key}" style="margin-inline-start:10px">اعتمد</button></dd></div>`;
+  };
+
+  const stale = y.upstreamStamp && y.upstreamStamp.length
+    ? `<p class="hint" style="margin-top:10px">ختم المصدر الثانوي: ${y.upstreamStamp[0]} — لا يُعتمد عليه؛ الثقة من اتفاق المصدرين.</p>` : "";
+  const gap = y.cityGap
+    ? `<div class="callout"><span class="mark">◆</span>
+       <span>الفجوة بين المدينتين <strong>${y.cityGap}×</strong> — اختيار المدينة الخطأ وحده يهدم الحوالة.</span></div>` : "";
+  const errs = y.errors && y.errors.length
+    ? `<div class="callout alarm"><span class="mark">▲</span><span>${y.errors.join(" · ")}</span></div>` : "";
+
+  body.innerHTML = `<dl class="lines">${row("aden","عدن")}${row("sanaa","صنعاء")}</dl>${gap}${errs}${stale}`;
+}
+
+/* how many days old the built-in snapshot is, for the staleness warning */
+function snapshotAgeDays(){
+  const d = (Date.now() - Date.parse(SNAPSHOT_STAMP + "T00:00:00Z")) / 86400000;
+  return isFinite(d) ? Math.floor(d) : 0;
 }
 
 /* poll on the same 60s cadence the upstream feed publishes on */
@@ -2212,6 +2392,20 @@ function bind(){
     S.overrides = {};
     save(); renderAll();
   };
+
+  /* Yemen: picking a city writes its rate into the manual override, which
+     is what unblocks a YER quote — the city is the price, so it has to be
+     an explicit act rather than a default that quietly picks one */
+  $("btn-yer").onclick = fetchYer;
+  $("yer-body").addEventListener("click", e=>{
+    const b = e.target.closest("[data-yer-use]");
+    if(!b || !S.yer) return;
+    const city = S.yer[b.dataset.yerUse];
+    if(!city || !city.USD.rate) return;
+    S.overrides.YER = city.USD.rate;
+    S.yerCity = b.dataset.yerUse === "aden" ? "عدن" : "صنعاء";
+    save(); renderAll();
+  });
 
   /* ledger */
   $("btn-save").onclick = ()=>{
