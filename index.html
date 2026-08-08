@@ -1197,13 +1197,17 @@ const CCY = {
   MAD:{ar:"درهم مغربي",    sym:"د.م", dp:2, tier:"thin"},
   TND:{ar:"دينار تونسي",   sym:"د.ت", dp:3, tier:"thin"},
   YER:{ar:"ريال يمني",     sym:"ر.ي", dp:0, tier:"dual",
-       note:"سعران منفصلان — عدن وصنعاء، والفرق بينهما نحو ٣ أضعاف"},
+       note:"سعران منفصلان — عدن وصنعاء، والفرق بينهما نحو ٣ أضعاف",
+       where:"اضغط «تحديث أسعار اليمن» أعلى الصفحة — يسحبه من مصدرين ويقاطعهما"},
   DZD:{ar:"دينار جزائري",  sym:"د.ج", dp:0, tier:"dual",
-       note:"السعر العالمي رسمي فقط — السوق الموازية أعلى بنحو ٨٠٪"},
+       note:"السعر العالمي رسمي فقط — السوق الموازية (السكوار) أعلى بنحو ٨٠٪",
+       where:"صرّافك في الجزائر أولًا · forexalgerie.com · تطبيق «دينار+» · أواصر"},
   LYD:{ar:"دينار ليبي",    sym:"د.ل", dp:2, tier:"dual",
-       note:"السوق الموازية أعلى من الرسمي بنحو ١٥٪"},
+       note:"السوق الموازية أعلى من الرسمي بنحو ١٥٪",
+       where:"صرّافك في طرابلس · مصرف ليبيا المركزي للسعر الرسمي"},
   SDG:{ar:"جنيه سوداني",   sym:"ج.س", dp:0, tier:"dual",
-       note:"السوق الموازية أعلى من الرسمي بأضعاف"}
+       note:"السوق الموازية أعلى من الرسمي بأضعاف",
+       where:"صرّافك في الخرطوم — لا مصدر عالمي يُعتد به"}
 };
 
 const TIERS = {
@@ -1258,6 +1262,7 @@ const S = {
   yerCity: null,                // which city the YER override was taken from
   locked: null,                 // {rates, at} — the day's published prices
   overrides: {},                // ccy -> rate typed by hand
+  ovrAt: {},                    // ccy -> when that rate was entered
   methods: structuredClone(DEFAULT_METHODS),
   cfg: { minFeeUsd:5, payoutFeePct:0.5, fixedCostUsd:0 },
   ui: { dir:"fwd", send:"GBP", payout:"SAR", amount:500, marginMode:"auto", fixedPct:4.5, method:"bank", tab:"calc", basis:"live", promo:"", promoCcys:["GBP","EUR","USD"] },
@@ -1268,7 +1273,7 @@ const S = {
 function save(){
   try{
     localStorage.setItem(LS, JSON.stringify({
-      overrides:S.overrides, methods:S.methods, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme, locked:S.locked, yerCity:S.yerCity
+      overrides:S.overrides, methods:S.methods, cfg:S.cfg, ui:S.ui, log:S.log, theme:S.theme, locked:S.locked, yerCity:S.yerCity, ovrAt:S.ovrAt
     }));
   }catch(e){ /* private mode — run without persistence */ }
 }
@@ -1278,6 +1283,7 @@ function load(){
     if(!raw) return;
     const d = JSON.parse(raw);
     if(d.overrides) S.overrides = d.overrides;
+    if(d.ovrAt) S.ovrAt = d.ovrAt;
     if(d.methods){
       for(const k of Object.keys(S.methods)){
         if(d.methods[k]) Object.assign(S.methods[k], d.methods[k]);
@@ -1521,6 +1527,32 @@ function grossForNet(usdNet){
 
 function num(v){ const n = parseFloat(v); return isFinite(n) ? n : 0; }
 
+/* A manual rate is a photograph of a market, not a subscription to it. For
+   a dual-rate currency nobody refreshes it for you, so its age has to be
+   visible: five days on from typing 238 for the dinar, the number carries
+   the same false confidence the global feed did. */
+function ovrAgeHours(c){
+  const at = S.ovrAt[c];
+  return at ? (Date.now() - at) / 3600000 : null;
+}
+const STALE_MANUAL_H = 24;
+
+function staleManualCcys(){
+  return [S.ui.send, S.ui.payout]
+    .filter((c,i,a) => a.indexOf(c) === i)
+    .filter(c => CCY[c] && !tierOf(c).ok && S.overrides[c] !== undefined)
+    .map(c => ({ c, h: ovrAgeHours(c) }))
+    .filter(x => x.h === null || x.h > STALE_MANUAL_H);
+}
+
+function ageText(h){
+  if(h === null) return "بلا تاريخ";
+  if(h < 1) return "قبل دقائق";
+  if(h < 24) return `قبل ${Math.floor(h)} ساعة`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? "أمس" : `قبل ${d} أيام`;
+}
+
 /* A dual-rate currency has no usable global price. Quoting one from the
    feed is not "roughly right" — for the Yemeni rial the feed is out by a
    factor of six. So the quote is refused until a local rate is typed in,
@@ -1669,7 +1701,8 @@ function renderQuote(){
       lines.innerHTML = q.blocked.map(c => `<div class="callout alarm"><span class="mark">▲</span>
         <span><strong>${CCY[c].ar} (${c})</strong> — ${CCY[c].note || "السعر العالمي لا يمثل السوق المحلية"}.
         السعر العالمي الآن <span class="num">${fmtRate(S.rates[c])}</span> للدولار، وهو
-        <strong>ليس</strong> ما يستلمه المستفيد. اكتب السعر الحقيقي في «المكتب ← تعديل الأسعار يدويًا».</span></div>`).join("");
+        <strong>ليس</strong> ما يستلمه المستفيد. اكتب السعر الحقيقي في «المكتب ← تعديل الأسعار يدويًا».
+        ${CCY[c].where ? `<br><strong>من أين تعرفه:</strong> ${CCY[c].where}` : ""}</span></div>`).join("");
     }else{
       outRate.textContent = (q && q.error === "tooSmall")
         ? `المبلغ أقل من الحد الأدنى — لا يقل عن ${money(q.minSend, q.send)} تقريبًا`
@@ -1720,6 +1753,16 @@ function renderQuote(){
     L("تكلفة الصرّاف", `<span class="num neg">−${money(q.partnerCost,"EUR")}</span>`) +
     L("الربح الصافي", `<span class="num">${money(q.netProfitEur,"EUR")}</span>`, "sum") +
     L("أي ما يعادل", `<span class="num">${money(q.netProfitUsd,"USD")}</span> · <span class="num">${fmt(q.netPct,2)}٪</span>`);
+
+  /* a stale hand-typed rate for a dual-rate currency is the same trap the
+     global feed was, one step removed — so it gets the same loud treatment */
+  const stale = staleManualCcys();
+  if(stale.length){
+    lines.innerHTML += stale.map(x => `<div class="callout alarm"><span class="mark">▲</span>
+      <span>سعر <strong>${CCY[x.c].ar}</strong> أدخلته <strong>${ageText(x.h)}</strong>
+      (<span class="num">${fmtRate(S.overrides[x.c])}</span> للدولار). تحقّق قبل الاعتماد —
+      ${CCY[x.c].where || "راجع صرّافك"}.</span></div>`).join("");
+  }
 
   /* the headline percentage is not what reaches your pocket — say so */
   if(q.netProfitEur <= 0){
@@ -2062,8 +2105,10 @@ function renderOverrides(){
       const t    = tierOf(c);
       /* a dual-rate currency with no manual figure is the dangerous case:
          it must read as blocked, not as a live price waiting to be used */
+      const age  = ovrAgeHours(c);
+      const old  = ovr !== undefined && !t.ok && (age === null || age > STALE_MANUAL_H);
       const src  = ovr !== undefined
-        ? `<span class="chip warn">يدوي${c === "YER" && S.yerCity ? " · " + S.yerCity : ""}</span>`
+        ? `<span class="chip ${old ? "crit" : "warn"}">يدوي${c === "YER" && S.yerCity ? " · " + S.yerCity : ""}${ovr !== undefined && age !== null ? " · " + ageText(age) : ""}</span>`
         : !t.ok
           ? `<span class="chip crit">مطلوب يدويًا</span>`
           : `<span class="chip good">${S.rateSource === "live" ? "مباشر" : "محفوظ"}</span>`;
@@ -2375,10 +2420,10 @@ function bind(){
   $("ovr-body").addEventListener("input", e=>{
     const c = e.target.dataset.ovr;
     if(!c) return;
-    if(e.target.value === "") delete S.overrides[c];
+    if(e.target.value === ""){ delete S.overrides[c]; delete S.ovrAt[c]; }
     else{
       const v = parseFloat(e.target.value);
-      if(isFinite(v) && v > 0) S.overrides[c] = v;
+      if(isFinite(v) && v > 0){ S.overrides[c] = v; S.ovrAt[c] = Date.now(); }
     }
     save(); renderBoard(); renderLock(); renderQuote(); renderLadder(); renderPromo();
   });
@@ -2386,10 +2431,12 @@ function bind(){
     const b = e.target.closest("[data-ovr-del]");
     if(!b) return;
     delete S.overrides[b.dataset.ovrDel];
+    delete S.ovrAt[b.dataset.ovrDel];
     save(); renderAll();
   });
   $("btn-ovr-clear").onclick = ()=>{
     S.overrides = {};
+    S.ovrAt = {};
     save(); renderAll();
   };
 
@@ -2403,6 +2450,7 @@ function bind(){
     const city = S.yer[b.dataset.yerUse];
     if(!city || !city.USD.rate) return;
     S.overrides.YER = city.USD.rate;
+    S.ovrAt.YER = Date.now();
     S.yerCity = b.dataset.yerUse === "aden" ? "عدن" : "صنعاء";
     save(); renderAll();
   });
