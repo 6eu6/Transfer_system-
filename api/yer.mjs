@@ -18,10 +18,12 @@ const strip = s => s.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\
 const txt   = s => strip(s).replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
 const n     = s => parseFloat(String(s).replace(/,/g, ""));
 
+/* kept well under the function's own ceiling: three of these run at once,
+   and a source that has not answered in six seconds is not going to */
 async function get(url){
   const r = await fetch(url, {
     headers: { "user-agent": "Mozilla/5.0 (compatible; hawala-desk/1.0)" },
-    signal: AbortSignal.timeout(9000)
+    signal: AbortSignal.timeout(6000)
   });
   if(!r.ok) throw new Error(`${url} → ${r.status}`);
   return r.text();

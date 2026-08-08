@@ -4,6 +4,9 @@
   "outputDirectory": "dist",
   "installCommand": "echo no dependencies",
   "framework": null,
+  "functions": {
+    "api/yer.mjs": { "maxDuration": 15 }
+  },
   "headers": [
     {
       "source": "/(.*)",
