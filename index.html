@@ -992,6 +992,19 @@ textarea.input{ resize:vertical; line-height:1.7; font-size:14px; color:var(--te
       </div>
     </div>
 
+    <div class="card" id="dzd-card">
+      <div class="card-head">
+        <h2>سعر الدينار الجزائري — السكوار</h2>
+        <span class="hint">السوق الموازية، لا السعر الرسمي</span>
+      </div>
+      <div class="card-body">
+        <div id="dzd-body"><p class="empty">اضغط «تحديث سعر السكوار»</p></div>
+        <div class="toolbar" style="margin-top:12px">
+          <button class="btn btn-sm" id="btn-dzd">تحديث سعر السكوار</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-head">
         <h2>ربح العملية الحالية</h2>
@@ -1259,6 +1272,7 @@ const S = {
   sourceCount: 0,               // how many feeds agreed on this refresh
   diverged: [],                 // [{c, gap}] — feeds that disagree materially
   yer: null,                    // {aden, sanaa, fetchedAt} from /api/yer
+  dzd: null,                    // {usd, premium, stamps} from /api/dzd
   yerCity: null,                // which city the YER override was taken from
   locked: null,                 // {rates, at} — the day's published prices
   overrides: {},                // ccy -> rate typed by hand
@@ -2172,6 +2186,7 @@ function renderAll(){
   renderTiers();
   renderOverrides();
   renderYer();
+  renderDzd();
   renderLog();
 }
 
@@ -2297,6 +2312,67 @@ function renderYer(){
     ? `<div class="callout alarm"><span class="mark">▲</span><span>${y.errors.join(" · ")}</span></div>` : "";
 
   body.innerHTML = `<dl class="lines">${row("aden","عدن")}${row("sanaa","صنعاء")}</dl>${gap}${errs}${stale}`;
+}
+
+/* ============================================================
+   ALGERIA — the square (السكوار), not the official rate
+   ============================================================ */
+async function fetchDzd(){
+  const body = document.getElementById("dzd-body");
+  body.innerHTML = `<p class="empty">جارٍ السحب…</p>`;
+  try{
+    const res = await fetch("/api/dzd", {cache:"no-store", signal:AbortSignal.timeout(20000)});
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    S.dzd = await res.json();
+  }catch(e){
+    S.dzd = null;
+    body.innerHTML = `<div class="callout alarm"><span class="mark">▲</span>
+      <span>تعذّر سحب سعر السكوار (${e.message}). تعمل هذه الميزة على النسخة المنشورة فقط.
+      أدخل السعر يدويًا، أو اسأل مراسلك في الجزائر.</span></div>`;
+    return;
+  }
+  renderDzd();
+}
+
+function renderDzd(){
+  const body = document.getElementById("dzd-body");
+  if(!S.dzd) return;
+  const d = S.dzd, u = d.usd;
+
+  if(!u || (!u.sell.rate && !u.buy.rate)){
+    body.innerHTML = `<div class="callout alarm"><span class="mark">▲</span>
+      <span>تعذّر الوصول للمصادر. ${(d.errors||[]).join(" · ")}</span></div>`;
+    return;
+  }
+
+  const line = (o, ar, hint) => {
+    if(!o || !o.rate) return "";
+    const chip = o.sources > 1 && o.gap < 2
+      ? `<span class="chip good">مؤكَّد · مصدران</span>`
+      : `<span class="chip warn">${o.confidence}</span>`;
+    return `<div class="line"><dt>${ar} ${chip}<br><span class="hint">${hint}</span></dt>
+      <dd><span class="num">1 USD = ${fmtRate(o.rate)}</span>
+      <button class="btn btn-sm" data-dzd-use="${o.rate}" style="margin-inline-start:10px">اعتمد</button></dd></div>`;
+  };
+
+  /* the selling side is what the desk actually realises turning dollars
+     into dinars, so it leads and the buying side sits under it for context */
+  const rows =
+    line(u.sell, "سعر البيع", "هذا ما تحصل عليه فعلًا — سعّر منه")
+    + line(u.buy, "سعر الشراء", "ما يدفعه من يشتري الدولار — للاطلاع");
+
+  const off = u.official
+    ? `<div class="line"><dt>السعر الرسمي</dt><dd><span class="num">${fmtRate(u.official)}</span></dd></div>` : "";
+
+  const prem = d.premium
+    ? `<div class="callout"><span class="mark">◆</span>
+       <span>السكوار أعلى من الرسمي بـ<strong>${d.premium}×</strong> — لهذا لا يصلح السعر العالمي هنا.</span></div>` : "";
+  const errs = (d.errors && d.errors.length)
+    ? `<div class="callout alarm"><span class="mark">▲</span><span>${d.errors.join(" · ")}</span></div>` : "";
+  const st = d.stamps || {};
+  const stamp = `<p class="hint" style="margin-top:10px">دينار بلس: ${st.dinarplus || "—"} · blackmarketlive: ${st.blackmarketlive || "—"}</p>`;
+
+  body.innerHTML = `<dl class="lines">${rows}${off}</dl>${prem}${errs}${stamp}`;
 }
 
 /* how many days old the built-in snapshot is, for the staleness warning */
@@ -2444,6 +2520,16 @@ function bind(){
      is what unblocks a YER quote — the city is the price, so it has to be
      an explicit act rather than a default that quietly picks one */
   $("btn-yer").onclick = fetchYer;
+  $("btn-dzd").onclick = fetchDzd;
+  $("dzd-body").addEventListener("click", e=>{
+    const b = e.target.closest("[data-dzd-use]");
+    if(!b) return;
+    const v = parseFloat(b.dataset.dzdUse);
+    if(!isFinite(v) || v <= 0) return;
+    S.overrides.DZD = v;
+    S.ovrAt.DZD = Date.now();
+    save(); renderAll();
+  });
   $("yer-body").addEventListener("click", e=>{
     const b = e.target.closest("[data-yer-use]");
     if(!b || !S.yer) return;
